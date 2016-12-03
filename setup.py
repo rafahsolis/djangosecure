@@ -8,5 +8,6 @@ setup(
     license='Apache License, Version 2.0',
     author='Rafael Herrero Solis',
     author_email='rafael@herrerosolis.com',
-    description='Secure your django site settings'
+    description='Secure your django site settings',
+    install_requires=['pycrypto==2.6.1']
 )
