@@ -1,7 +1,8 @@
-from distutils.core import setup
+from setuptools import setup
+# from distutils.core import setup
 
 setup(
-    name='djangosecure',
+    name='django-secure',
     version='0.0.0',
     packages=['djangosecure'],
     url='https://rafael.herrerosolis.com',
@@ -9,5 +10,8 @@ setup(
     author='Rafael Herrero Solis',
     author_email='rafael@herrerosolis.com',
     description='Secure your django site settings',
-    install_requires=['pycrypto==2.6.1']
+    install_requires=[
+        'pycrypto==2.6.1',
+        'Django',
+    ]
 )
