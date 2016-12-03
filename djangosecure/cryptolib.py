@@ -116,7 +116,7 @@ def read_key_file(path):
     return cryptokey
 
 
-def get_database(database, path=None, cryptokey=read_key_file(os.path.expanduser('~/.private/cpc.key'))):
+def get_database(database, path=None, cryptokey=read_key_file(os.path.expanduser('~/.private/django_secure.key'))):
     """
     Returns a database config
     :param database: Config file section
@@ -147,7 +147,7 @@ def get_database(database, path=None, cryptokey=read_key_file(os.path.expanduser
         return get_database(database.replace('default_db', 'default'), path=path)  # pragma: no cover
 
 
-def encrypt(pwd, hexkey=read_key_file(os.path.expanduser('~/.private/cpc.key')), padchar='%', block_size=32):
+def encrypt(pwd, hexkey=read_key_file(os.path.expanduser('~/.private/django_secure.key')), padchar='%', block_size=32):
     """
 
     :param pwd:
@@ -164,7 +164,7 @@ def encrypt(pwd, hexkey=read_key_file(os.path.expanduser('~/.private/cpc.key')),
     return encoded
 
 
-def decrypt(cyphertext, hexkey=read_key_file(os.path.expanduser('~/.private/cpc.key')), padchar='%'):
+def decrypt(cyphertext, hexkey=read_key_file(os.path.expanduser('~/.private/django_secure.key')), padchar='%'):
     """
     Decrypt encrypted text
     :param cyphertext: Encrypted text
@@ -190,9 +190,12 @@ def decrypt(cyphertext, hexkey=read_key_file(os.path.expanduser('~/.private/cpc.
     return decoded
 
 
-def get_secret_key(secret_file_path):
+# TODO: key_file param
+def get_secret_key(secret_file_path=os.path.join(settings.BASE_DIR, 'secret_key.secure'),
+                   cryptokey=read_key_file(os.path.expanduser('~/.private/django_secure.key'))):
+
     try:
-        key = decrypt(open(secret_file_path).read().strip())
+        key = decrypt(open(secret_file_path).read().strip(), cryptokey)
     except IOError:
 
         key = ''.join(
@@ -200,7 +203,7 @@ def get_secret_key(secret_file_path):
                  for i in range(50)])
         try:
             with open(secret_file_path, 'w') as secret:
-                secret.write(encrypt(key))
+                secret.write(encrypt(key, hexkey=cryptokey))
 
         except IOError:
             logger.error("Secret key file (%s) could not be created. "
@@ -208,46 +211,6 @@ def get_secret_key(secret_file_path):
                          "\n %s \n or review file permissions!" % (secret_file_path, encrypt(key)))
             return None
     return key
-
-
-# def get_s3_config(section, option, path=None, cryptokey=read_key_file(os.path.expanduser('~/.private/cpc.key'))):
-#     """
-#     Returns S3 bucket access info
-#     :param section: config section
-#     :param part:
-#     :param cryptokey:
-#     :param path:
-#     :return:
-#     """
-#     logger.warning('Using deprecated cpc_core.utils.cryptolib.get_s3_config, '
-#                    'use cpc_core.utils.cryptolib.get_s3_config_new instead')
-#
-#     config = configparser.ConfigParser()
-#     if path is None:
-#         raise NotImplementedError("Fix generate s3conf path cryptolib.get_s3_config")  # pragma: no cover
-#         # cfg_path = os.path.join(settings.PROJECT_DIR, 's3.cnf')
-#     else:
-#         cfg_path = path
-#     config.read(cfg_path)
-#     if section not in config.sections():
-#         config.add_section('{}'.format(section))
-#         config.set(section, 'S3_access_IAM_Key_Id', encrypt(raw_input('S3 access IAM Key: ')))
-#         config.set(section, 'S3_access_IAM_Secret_Key', encrypt(password_prompt('S3 access IAM Secret Key')))
-#         with open(cfg_path, 'a') as cfgfile:
-#             config.write(cfgfile)
-#         config.read(cfg_path)
-#
-#         # try:
-#     return decrypt(config.get(section, option), cryptokey)
-    # except configparser.NoOptionError:
-    #     if option == 'S3_access_IAM_Secret_Key':
-    #         config.set(section, option, encrypt(password_prompt('S3 access IAM Secret Key')))
-    #     else:
-    #         config.set(section, 'S3_access_IAM_Key_Id', encrypt(raw_input('S3 access IAM Key: ')))
-    #     with open(cfg_path, 'a') as cfgfile:
-    #         config.write(cfgfile)
-    #     config.read(cfg_path)
-    #     return decrypt(config.get(section, option), cryptokey)
 
 
 def prompt(message):
@@ -266,7 +229,7 @@ def prompt(message):
             return input('%s: ' % message)  # pragma: no cover
 
 
-def get_s3_config_new(section, option, path=None, cryptokey=read_key_file(os.path.expanduser('~/.private/cpc.key')), prompt_funct=prompt):
+def get_s3_config_new(section, option, path=None, cryptokey=read_key_file(os.path.expanduser('~/.private/django_secure.key')), prompt_funct=prompt):
     """
     Returns S3 bucket access info
     :param section: config section
