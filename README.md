@@ -1,0 +1,2 @@
+# djangosecure
+Secure Django settings
