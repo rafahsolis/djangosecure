@@ -69,7 +69,7 @@ def create_database_config_file(database, path=None, cryptokey=None):  # pragma:
     database = database.replace('default', 'default_db')  # pragma: no cover
     config = configparser.ConfigParser()  # pragma: no cover
     if path is None:  # pragma: no cover
-        cfg_path = os.path.join(settings.PROJECT_DIR, 'databases.cnf')  # pragma: no cover
+        cfg_path = os.path.join(settings.BASE_DIR, 'secure_settings', 'databases.cnf')  # pragma: no cover
     else:  # pragma: no cover
         cfg_path = path  # pragma: no cover
     config.read(cfg_path)  # pragma: no cover
@@ -130,8 +130,8 @@ def get_database(database, path=None, cryptokey=read_key_file(os.path.expanduser
     database = database.replace('default', 'default_db')
     config = configparser.ConfigParser()
     if path is None:
-        raise NotImplementedError('Criptolib.get_database: fix path generation')
-        # cfg_path = os.path.join(settings.PROJECT_DIR, 'databases.cnf')
+        # raise NotImplementedError('Criptolib.get_database: fix path generation')
+        cfg_path = os.path.join(settings.BASE_DIR, 'secure_settings', 'databases.cnf')
     else:
         cfg_path = path
     config.read(cfg_path)
@@ -143,8 +143,8 @@ def get_database(database, path=None, cryptokey=read_key_file(os.path.expanduser
             dbconfig[option.upper()] = decrypt(config.get(database, option), hexkey=cryptokey)
         return dbconfig
     else:
-        create_database_config_file(database.replace('default_db', 'default'), path=path, cryptokey=cryptokey)  # pragma: no cover
-        return get_database(database.replace('default_db', 'default'), path=path)  # pragma: no cover
+        create_database_config_file(database.replace('default_db', 'default'), path=cfg_path, cryptokey=cryptokey)  # pragma: no cover
+        return get_database(database.replace('default_db', 'default'), path=cfg_path)  # pragma: no cover
 
 
 def encrypt(pwd, hexkey=read_key_file(os.path.expanduser('~/.private/django_secure.key')), padchar='%', block_size=32):
