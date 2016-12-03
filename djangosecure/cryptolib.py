@@ -19,7 +19,7 @@ from Crypto.Cipher import AES
 from django.conf import settings
 from files_dirs_lib import check_or_create_dir
 
-logger = logging.getLogger('utils.cryptolib')
+logger = logging.getLogger('django')
 
 
 DATABASE_ENGINES = {
@@ -184,16 +184,15 @@ def decrypt(cyphertext, hexkey=read_key_file(os.path.expanduser('~/.private/djan
     try:
         decoded = DecodeAES(cipher, cyphertext)
     except TypeError:
-        logger.error("Error decodig '{ct}'".format(ct=cyphertext))
+        # logger.error("Error decodig '{ct}'".format(ct=cyphertext))
         return None
 
     return decoded
 
 
-# TODO: key_file param
-def get_secret_key(secret_file_path=os.path.join(settings.BASE_DIR, 'secret_key.secure'),
-                   cryptokey=read_key_file(os.path.expanduser('~/.private/django_secure.key'))):
-
+def get_secret_key(secret_file_path, cryptokey=read_key_file(os.path.expanduser('~/.private/django_secure.key'))):
+    logger.info("Reading existing key from: {path}".format(path=secret_file_path))
+    check_or_create_dir(os.path.dirname(secret_file_path))
     try:
         key = decrypt(open(secret_file_path).read().strip(), cryptokey)
     except IOError:
@@ -204,9 +203,16 @@ def get_secret_key(secret_file_path=os.path.join(settings.BASE_DIR, 'secret_key.
         try:
             with open(secret_file_path, 'w') as secret:
                 secret.write(encrypt(key, hexkey=cryptokey))
+                os.chmod(secret_file_path, stat.S_IRUSR)
+
+
+            logger.info("Saving new SECRET_KEY to: {path}".format(path=secret_file_path))
 
         except IOError:
             logger.error("Secret key file (%s) could not be created. "
+                         "Please create the file with the following secret key: "
+                         "\n %s \n or review file permissions!" % (secret_file_path, encrypt(key)))
+            print("Secret key file (%s) could not be created. "
                          "Please create the file with the following secret key: "
                          "\n %s \n or review file permissions!" % (secret_file_path, encrypt(key)))
             return None
@@ -243,7 +249,8 @@ def get_s3_config_new(section, option, path=None, cryptokey=read_key_file(os.pat
     # TODO: Manage incomplete config files
     config = configparser.ConfigParser()
     if path is None:
-        raise NotImplementedError("Fix generate s3conf path cryptolib.get_s3_config")
+        path = os.path.join(settings.BASE_DIR, 'secure_settings')
+        # raise NotImplementedError("Fix generate s3conf path cryptolib.get_s3_config")
         # cfg_path = os.path.join(settings.PROJECT_DIR, 's3.cnf')
     else:
         cfg_path = path
