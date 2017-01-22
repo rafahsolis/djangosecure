@@ -12,12 +12,12 @@ def here(name):
 
 
 def read(name, mode='rb', encoding='utf8'):
-    try:
-        import pypandoc
-        long_description = pypandoc.convert(here(name), 'rst')
-    except (IOError, ImportError):
-        with open(here(name), mode) as fp:
-            long_description = fp.read().decode(encoding)
+    # try:
+    import pypandoc
+    long_description = pypandoc.convert(here(name), 'rst')
+    # except (IOError, ImportError):
+    #     with open(here(name), mode) as fp:
+    #         long_description = fp.read().decode(encoding)
     return long_description
 
 # Development Status :: 1 - Planning
@@ -30,7 +30,7 @@ def read(name, mode='rb', encoding='utf8'):
 
 setup(
     name='djangosecure',
-    version='v0.0.2',
+    version='v0.0.2d',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
     download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.2b',
@@ -47,6 +47,7 @@ setup(
         'Django',
         'six==1.10.0',
         'future==0.16.0',
+        'pypandoc',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
