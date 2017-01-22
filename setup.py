@@ -1,6 +1,9 @@
 import os
 from setuptools import setup
+
 # from distutils.core import setup
+
+
 
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
@@ -12,12 +15,12 @@ def here(name):
 
 
 def read(name, mode='rb', encoding='utf8'):
-    # try:
-    import pypandoc
-    long_description = pypandoc.convert(here(name), 'rst')
-    # except (IOError, ImportError):
-    #     with open(here(name), mode) as fp:
-    #         long_description = fp.read().decode(encoding)
+    os.system('pandoc --from=markdown --to=rst --output=README.rst README.md')
+    if os.path.exists('README.rst'):
+        long_description = open('README.rst').read()
+    else:
+        with open(here(name), mode) as fp:
+            long_description = fp.read().decode(encoding)
     return long_description
 
 # Development Status :: 1 - Planning
@@ -30,10 +33,10 @@ def read(name, mode='rb', encoding='utf8'):
 
 setup(
     name='djangosecure',
-    version='v0.0.2d',
+    version='v0.0.3',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
-    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.2d',
+    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.3',
     license='Apache License, Version 2.0',
     author='Rafael Herrero Solis',
     author_email='rafael@herrerosolis.com',
@@ -47,7 +50,7 @@ setup(
         'Django',
         'six==1.10.0',
         'future==0.16.0',
-        'pypandoc',
+        # 'pypandoc',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
