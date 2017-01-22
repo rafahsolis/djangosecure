@@ -1,6 +1,7 @@
 # -*-coding: utf-8 -*-
+from __future__ import absolute_import, unicode_literals
 import os
-from django.utils.translation import ugettext as _
+# from django.utils.translation import ugettext as _
 
 
 def check_or_create_dir(directorio, logger=None):
@@ -11,21 +12,21 @@ def check_or_create_dir(directorio, logger=None):
     :return: True si existe o lo crea, False si hay errores
     """
     # TODO: Modificar para que en lugar de un bucle use un parametro tipo: mkdir -p
-    path_existsts = os.path.isdir(directorio)
 
-
-    if not path_existsts:
+    if not directorio:
+        return
+    if not os.path.isdir(directorio):
         try:
             os.makedirs(directorio)
 
             if logger:
-                logger.info(_('Created directory: ') + directorio)
+                logger.info('Created directory: ' + directorio)
             else:
-                print(_('Created directory: ') + directorio)
+                print('Created directory: ' + directorio)
         except IOError:
             if logger:
-                logger.info(_('Error creating directory: ') + directorio + _(' Check user permissions'))
+                logger.info('Error creating directory: ' + directorio + ' Check user permissions')
             else:
-                print(_('Error creating directory: ') + directorio + _(' Check user permissions'))
+                print('Error creating directory: ' + directorio + ' Check user permissions')
             return False
     return True

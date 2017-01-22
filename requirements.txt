@@ -1,0 +1,4 @@
+Django==1.10.5
+future==0.16.0
+pycrypto==2.6.1
+six==1.10.0
