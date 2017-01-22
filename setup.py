@@ -12,8 +12,13 @@ def here(name):
 
 
 def read(name, mode='rb', encoding='utf8'):
-    with open(here(name), mode) as fp:
-        return fp.read().decode(encoding)
+    try:
+        import pypandoc
+        long_description = pypandoc.convert(here(name), 'rst')
+    except (IOError, ImportError):
+        with open(here(name), mode) as fp:
+            long_description = fp.read().decode(encoding)
+    return long_description
 
 # Development Status :: 1 - Planning
 # Development Status :: 2 - Pre-Alpha
