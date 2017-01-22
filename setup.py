@@ -3,10 +3,9 @@ from setuptools import setup
 
 # from distutils.core import setup
 
-
-
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
+
 
 def here(name):
     return os.path.join(
@@ -33,10 +32,10 @@ def read(name, mode='rb', encoding='utf8'):
 
 setup(
     name='djangosecure',
-    version='v0.0.3',
+    version='v0.0.2',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
-    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.3',
+    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.2',
     license='Apache License, Version 2.0',
     author='Rafael Herrero Solis',
     author_email='rafael@herrerosolis.com',
@@ -50,7 +49,6 @@ setup(
         'Django',
         'six==1.10.0',
         'future==0.16.0',
-        # 'pypandoc',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
