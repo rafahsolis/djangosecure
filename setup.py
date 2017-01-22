@@ -33,7 +33,7 @@ setup(
     version='v0.0.2d',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
-    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.2b',
+    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.2d',
     license='Apache License, Version 2.0',
     author='Rafael Herrero Solis',
     author_email='rafael@herrerosolis.com',
