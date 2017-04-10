@@ -1,5 +1,8 @@
 # django secure changelog
 (Using Semantic Versioning)
+## [unreleased] - 2017-
+### Changed
+  - Encode utf-8 before returning decoded for Python 3 @djangosecure.cryptolib.decrypt()
 
 ## [0.0.1]  - 2017-01-21
 ### Added

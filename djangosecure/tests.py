@@ -31,18 +31,18 @@ class TestImportTestCase(TestCase):
                                                  test=True),
         }
         self.assertIsInstance(database, dict)
-        self.assertEqual(database['default']['PORT'], b'5432')
+        self.assertEqual(database['default']['PORT'], '5432')
 
     def test_encrypt_decrypt(self):
-        self.assertEqual(b'text', djangosecure.cryptolib.decrypt(djangosecure.cryptolib.encrypt('text')))
+        self.assertEqual('text', djangosecure.cryptolib.decrypt(djangosecure.cryptolib.encrypt('text')))
 
     def test_hidden_setting(self):
         self.assertEqual(djangosecure.hidden_setting(
-            'section', 'option', config_file=self.files['hidden_settings'], test='some_value'), b'some_value')
+            'section', 'option', config_file=self.files['hidden_settings'], test='some_value'), 'some_value')
 
     def test_get_secret_key(self):
         key = djangosecure.get_secret_key(self.files['keyfile'], cryptokey=self.cryptokey)
-        self.assertIsInstance(key, bytes)
+        self.assertIsInstance(key, six.string_types)
 
     @classmethod
     def tearDownClass(cls):

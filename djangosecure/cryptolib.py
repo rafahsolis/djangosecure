@@ -212,6 +212,9 @@ def decrypt(cyphertext, hexkey=read_key_file(DEFAULT_KEY_FILE), padchar=b'%'):
     except TypeError:
         return None
 
+    if six.PY3:
+        decoded = decoded.decode('utf-8')
+
     return decoded
 
 
