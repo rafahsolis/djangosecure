@@ -30,3 +30,7 @@ def check_or_create_dir(directorio, logger=None):
                 print('Error creating directory: ' + directorio + ' Check user permissions')
             return False
     return True
+
+
+def set_perms(path, perms):
+    raise NotImplementedError('Not implemented yet')

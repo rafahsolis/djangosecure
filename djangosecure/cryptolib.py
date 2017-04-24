@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import os
 import stat
 import six
+import warnings
 from builtins import input
 # import logging
 try:
@@ -18,16 +19,33 @@ import getpass
 import random
 import string
 from Crypto.Cipher import AES
-from .files_dirs_lib import check_or_create_dir
+from .fileslib import check_or_create_dir
 
-# TODO: Logger (was using django logger, but independent logger will work better)
+
 # TODO: Config files permissions
 # TODO: doble colon at s3 & celery
+# TODO: Refactor classes
 
-# logger = logging.getLogger('django')
+
+class Logger(object):
+    # TODO: Mocked logger replace with logger.getLogger()
+    def error(self, message):
+        print(message)
+
+    def info(self, message):
+        print(message)
+
+    def debug(self, message):
+        print(message)
+
+    def warning(self, message):
+        print(message)
+
+
+logger = Logger()
 
 # Default file paths
-DEFAULT_KEY_FILE = os.path.expanduser('~/.private/django_secure.key')
+DEFAULT_CRYPTO_KEY_FILE = os.path.expanduser('~/.private/django_secure.key')
 DEFAULT_DATABASES_CONF = os.path.expanduser('~/.private/django_databases.cnf')
 DEFAULT_HIDDEN_SETTINGS = os.path.expanduser('~/.private/django_secure_hidden_settings.cnf')
 
@@ -42,11 +60,12 @@ DATABASE_ENGINES = {
 
 def gen_aes_key(block_size=32):
     """
-
+    from djangosecure.cryptolib import gen_aes_key
+    gen_aes_key()
     :param block_size:
     :return:
     """
-
+    warnings.warn("shouldn't use this function anymore! Now use AESCipher.gen_aes_key.", DeprecationWarning)
     key = os.urandom(block_size)
     return binascii.hexlify(key)
 
@@ -141,7 +160,7 @@ def read_key_file(path):
     return cryptokey
 
 
-def get_database(database, path=None, cryptokey=read_key_file(DEFAULT_KEY_FILE), test=None):
+def get_database(database, path=None, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=None):
     """
     Returns a database config
     :param database: Config file section
@@ -171,7 +190,7 @@ def get_database(database, path=None, cryptokey=read_key_file(DEFAULT_KEY_FILE),
         return get_database(database.replace('default_db', 'default'), path=cfg_path, cryptokey=cryptokey)
 
 
-def encrypt(pwd, hexkey=read_key_file(DEFAULT_KEY_FILE), padchar='%', block_size=32):
+def encrypt(pwd, hexkey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), padchar='%', block_size=32):
     """
     Encrypt pwd
     :param pwd:
@@ -190,7 +209,7 @@ def encrypt(pwd, hexkey=read_key_file(DEFAULT_KEY_FILE), padchar='%', block_size
     return encoded
 
 
-def decrypt(cyphertext, hexkey=read_key_file(DEFAULT_KEY_FILE), padchar=b'%'):
+def decrypt(cyphertext, hexkey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), padchar=b'%'):
     """
     Decrypt encrypted text
     :param cyphertext: Encrypted text
@@ -218,7 +237,7 @@ def decrypt(cyphertext, hexkey=read_key_file(DEFAULT_KEY_FILE), padchar=b'%'):
     return decoded
 
 
-def get_secret_key(secret_file_path, cryptokey=read_key_file(DEFAULT_KEY_FILE)):
+def get_secret_key(secret_file_path, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE)):
 
     # logger.info("Reading existing key from: {path}".format(path=secret_file_path))
     path = os.path.dirname(secret_file_path)
@@ -269,7 +288,7 @@ def prompt(message, test_value=None):
         return input('%s: ' % message)
 
 
-def get_s3_config(section, option, path=None, cryptokey=read_key_file(DEFAULT_KEY_FILE), prompt_funct=prompt):
+def get_s3_config(section, option, path=None, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), prompt_funct=prompt):
     """
     Returns S3 bucket access info
     :param section: configparser section (str)
@@ -315,7 +334,7 @@ def get_s3_config(section, option, path=None, cryptokey=read_key_file(DEFAULT_KE
 
 
 def create_hidden_setting(section, option, config, config_file,
-                          cryptokey=read_key_file(DEFAULT_KEY_FILE), test=None):
+                          cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=None):
     """
     Prompts for a value for the [section] option value, saves it to the configuration file and returns
     :param section: configparser section (str)
@@ -342,7 +361,7 @@ def create_hidden_setting(section, option, config, config_file,
 
 
 def hidden_setting(section, option, config_file=DEFAULT_HIDDEN_SETTINGS,
-                   cryptokey=read_key_file(DEFAULT_KEY_FILE), test=None):
+                   cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=None):
     """
     Get some sensible setting value, will prompt for it if it was not found on config_file
     :param section: configparser section (str)
@@ -364,3 +383,152 @@ def hidden_setting(section, option, config_file=DEFAULT_HIDDEN_SETTINGS,
                                              test=test),
                        hexkey=cryptokey)
     return setting
+
+
+class EncryptedStoredSettings(object):
+    def __init__(self, crypto_key_file=DEFAULT_CRYPTO_KEY_FILE, config_file=DEFAULT_HIDDEN_SETTINGS, test_mode=False):
+        self.crypto_key = CryptoKeyFileManager(crypto_key_file).key # TODO: This goes in Cipher
+        self.config_file_path = config_file
+        self.test_mode = test_mode
+        self.config_reader = configparser.ConfigParser()
+        self.encrypted_config = self.read_encrypted_config()
+
+    def get(self, section, option):
+
+        try:
+            setting = decrypt(self.encrypted_config.get(section, option), hexkey=self.crypto_key)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            return decrypt(
+                create_hidden_setting(section, option, config=self.encrypted_config, config_file=self.config_file_path, cryptokey=self.crypto_key,
+                                      test=self.test_mode),
+                hexkey=self.crypto_key)
+        return setting
+
+    def save(self, section, option, value):
+        raise NotImplementedError('WIP')
+
+    def encrypt(self):
+        raise NotImplementedError('WIP')
+
+    def decrypt(self):
+        raise NotImplementedError('WIP')
+
+    def prompt(self, message, test_value=None):
+        """
+        Deal with python2 python3 input differences and use hidden input field for password like inputs
+        :param message:
+        :param test_value: Used for tests
+        :return:
+        """
+        if test_value:
+            return test_value
+
+        passfields = ['S3 access IAM Secret Key', 'database password']
+        if message in passfields or 'assword' in message:
+            return password_prompt('%s: ' % message)
+        else:
+            return input('%s: ' % message)
+
+    def read_encrypted_config(self):
+        return self.config_reader.read(self.config_file_path)
+
+
+class HiddenSettings(EncryptedStoredSettings):
+    pass
+
+    # def __init__(self, *args, **kwargs):
+    #     super(HiddenSettings, self).__init__(*args, **kwargs)
+    #     def
+
+
+class CryptoKeyFileManager(object):
+    """
+    Usage:
+        from djangosecure import CryptoKeyFileManager
+        crypto_key = CryptoKeyFileManager('crypto/key/path.txt').key
+    """
+    block_size = 32
+
+    def __init__(self, crypto_key_path):
+        self.path = crypto_key_path
+
+        try:
+            self.key = self.read_key_file()
+        except IOError:
+            self.key = self.create_key_file()
+
+    def read_key_file(self):
+        with open(self.path, b'r') as crypto_key_file:
+            return crypto_key_file.read().strip()
+
+    def create_key_file(self):
+        check_or_create_dir(os.path.dirname(self.path))
+        os.chmod(os.path.dirname(self.path), stat.S_IRWXU)
+        return self.write_key_file(gen_aes_key(block_size=self.block_size))
+
+    def write_key_file(self, crypto_key):
+        with open(self.path, b'w') as key_file:
+            if six.PY3:
+                key_file.write(crypto_key.decode('utf-8'))
+            else:
+                key_file.write(crypto_key)
+            os.chmod(self.path, stat.S_IRUSR + stat.S_IWRITE)
+        return crypto_key
+
+    def __str__(self):
+        return self.key
+
+
+class Cipher(object):
+    def __init__(self, crypto_key_file_path=DEFAULT_CRYPTO_KEY_FILE):
+        self.crypto_key_file_path = crypto_key_file_path
+        self.key_manager = CryptoKeyFileManager
+        self.crypto_key = self.get_crypto_key()
+
+    def get_crypto_key(self):
+        return CryptoKeyFileManager(self.crypto_key_file_path).key
+
+    def encrypt(self, plain_text):
+        raise NotImplementedError('Must be defined at subclass')
+
+    def decrypt(self, ciphered_text):
+        raise NotImplementedError('Must be defined at subclass')
+
+    def gen_key(self, *args, **kwargs):
+        raise NotImplementedError('Must be defined at subclass')
+
+class AESCipher(Cipher):
+    block_size = 32
+
+    def encrypt(self, plain_text):
+        key = binascii.unhexlify(self.crypto_key)
+        pad = lambda s: s + (block_size - len(s) % block_size) * padchar
+        EncodeAES = lambda c, s: base64.b64encode(c.encrypt(pad(s)))
+        cipher = AES.new(key)
+        encoded = EncodeAES(cipher, pwd)
+        if six.PY3:
+            encoded = encoded.decode('utf-8')
+        return encoded
+
+    def encrypt(self, ciphered_text):
+        key = self.unhexlify_crypto_key()
+
+        DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(padchar)
+        key = key
+        cipher = AES.new(key)
+
+        try:
+            decoded = DecodeAES(cipher, ciphered_text)
+        except TypeError:
+            return None
+
+        if six.PY3:
+            decoded = decoded.decode('utf-8')
+
+        return decoded
+
+    def unhexlify_crypto_key(self):
+        try:
+            key = binascii.unhexlify(self.crypto_key)
+        except TypeError:
+            return None
