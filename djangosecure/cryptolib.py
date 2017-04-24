@@ -485,6 +485,7 @@ class Cipher(object):
         self.key_manager = CryptoKeyFileManager
         self.crypto_key = self.get_crypto_key()
 
+
     def get_crypto_key(self):
         return CryptoKeyFileManager(self.crypto_key_file_path).key
 
@@ -497,23 +498,26 @@ class Cipher(object):
     def gen_key(self, *args, **kwargs):
         raise NotImplementedError('Must be defined at subclass')
 
+
 class AESCipher(Cipher):
     block_size = 32
+    padchar = '%'
+    # TODO: Warning if pad char is found at the end of the string
 
     def encrypt(self, plain_text):
-        key = binascii.unhexlify(self.crypto_key)
-        pad = lambda s: s + (block_size - len(s) % block_size) * padchar
-        EncodeAES = lambda c, s: base64.b64encode(c.encrypt(pad(s)))
-        cipher = AES.new(key)
-        encoded = EncodeAES(cipher, pwd)
+        key = binascii.unhexlify(self.crypto_key)  # TODO: from class
+        pad = lambda s: s + (self.block_size - len(s) % self.block_size) * self.padchar  # TODO: Pad with self.pad
+        EncodeAES = lambda c, s: base64.b64encode(c.encrypt(pad(s)))  # TODO: self.encode_aes()
+        cipher = AES.new(key)  # TODO: To Class
+        encoded = EncodeAES(cipher, plain_text)
         if six.PY3:
             encoded = encoded.decode('utf-8')
         return encoded
 
-    def encrypt(self, ciphered_text):
+    def dencrypt(self, ciphered_text):
         key = self.unhexlify_crypto_key()
 
-        DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(padchar)
+        DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(self.padchar)
         key = key
         cipher = AES.new(key)
 
@@ -526,6 +530,10 @@ class AESCipher(Cipher):
             decoded = decoded.decode('utf-8')
 
         return decoded
+
+    def pad(self, text):
+        characters_to_append = ((self.block_size - len(text)) % self.block_size)
+        return text + characters_to_append * self.padchar
 
     def unhexlify_crypto_key(self):
         try:
