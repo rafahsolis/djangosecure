@@ -1,8 +1,11 @@
-image: rafahsolis/rpi_python:0.0.1
+image: rafahsolis/djangosecure_runner:0.0.0
 
 test:
   tags:
   - docker_python2.7
+
+  before_script:
+  - apt-get install apt-get install python-dev libgmp-dev gcc
 
   script:
   - pip install -r requirements.txt
