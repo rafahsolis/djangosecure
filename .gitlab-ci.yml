@@ -6,7 +6,7 @@ test:
 
   script:
   - pip install -r requirements.txt
-  - nosetests --with-coverage --cover-erase --cover-package=. --cover-html
+  - nosetests --with-coverage --cover-html --cover-inclusive --cover-package=djangosecure
 
   artifacts:
     paths:
