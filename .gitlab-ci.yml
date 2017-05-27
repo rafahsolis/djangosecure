@@ -1,4 +1,4 @@
-image: rafahsolis/djangosecure_runner:0.0.0
+image: rafahsolis/djangosecure_runner
 
 test:
   tags:
