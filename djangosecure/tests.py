@@ -3,7 +3,11 @@ import six
 import os
 import djangosecure
 from unittest import TestCase
-from djangosecure.cryptolib import CryptoKeyFileManager, EncryptedStoredSettings
+from djangosecure.cryptolib import (
+    CryptoKeyFileManager,
+    EncryptedStoredSettings,
+    DjangoDatabaseSettings,
+)
 
 # TODO: Increase tests coverage
 # nosetests --with-coverage --cover-html
@@ -12,6 +16,8 @@ from djangosecure.cryptolib import CryptoKeyFileManager, EncryptedStoredSettings
 
 class DjangoSecureTestCase(TestCase):
     to_remove = []
+    output_dir = None
+    files = None
 
     @classmethod
     def setUpClass(cls):
@@ -48,12 +54,6 @@ class TestImportTestCase(DjangoSecureTestCase):
         self.assertEqual(djangosecure.hidden_setting(
             'section', 'option', config_file=self.files['hidden_settings'], test='some_value'), 'some_value')
 
-    # def test_encryptedStoredSetting(self):
-    #     hidden = djangosecure.EncryptedStoredSettings(self.files['cryptokeyfile'])
-    #
-    #     self.assertEqual(hidden.get(
-    #         'section', 'option', config_file=self.files['hidden_settings'], test='some_value'), )
-
     def test_get_secret_key(self):
         key = djangosecure.get_secret_key(self.files['keyfile'], cryptokey=self.cryptokey)
         self.assertIsInstance(key, six.string_types)
@@ -66,25 +66,6 @@ class TestImportTestCase(DjangoSecureTestCase):
             except OSError:
                 pass
         os.removedirs(cls.output_dir)
-#
-#
-#         # OLD tests ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-    # test S3 IAM Settings
-    # AWS_STORAGE_BUCKET_NAME = 'bucket_name'
-    # AWS_ACCESS_KEY_ID = djangosecure.get_s3_config(AWS_STORAGE_BUCKET_NAME, 'S3_access_IAM_Key_Id',
-        # path=S3_CFG, cryptokey=cryptokey)
-    # AWS_SECRET_ACCESS_KEY = djangosecure.get_s3_config(AWS_STORAGE_BUCKET_NAME, 'S3_access_IAM_Secret_Key',
-        # path=S3_CFG, cryptokey=cryptokey)
-    # print('S3 TEST:', AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    #
-    # # test Hidden setting
-    # from djangosecure import hidden_setting
-    # CELERY_BROKER = 'amqp://{0}:{1}@localhost//'.format(
-    #     hidden_setting('celery', 'broker_username', config_file=hidden_settings, cryptokey=cryptokey),
-    #     hidden_setting('celery', 'broker_password', config_file=hidden_settings, cryptokey=cryptokey)
-    #     )
-    # print('HIDDEN SETTING TEST:', CELERY_BROKER)
 
 
 class TestCriptolib(DjangoSecureTestCase):
@@ -93,6 +74,7 @@ class TestCriptolib(DjangoSecureTestCase):
         self.cryptokey = CryptoKeyFileManager(self.files['cryptokeyfile'])
         self.hidden_settings = EncryptedStoredSettings(self.files['hidden_settings'],
                                                        crypto_key_file=self.files['cryptokeyfile'])
+        self.database_settings = DjangoDatabaseSettings(self.files['db_path'])
 
     def test_crypto_key_file_manager(self):
         self.assertEqual(len(self.cryptokey.key), 64)
@@ -123,3 +105,13 @@ class TestCriptolib(DjangoSecureTestCase):
     #             pass
     #     os.removedirs(cls.output_dir)
 
+    def test_get_database(self):
+        database = self.database_settings.database('default', test=True)
+        self.assertDictEqual(database, {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'test_db_name',
+            'USER': 'test_user',
+            'PASSWORD': 'test_password',
+            'HOST': 'test_host',
+            'PORT': '5432',
+        })

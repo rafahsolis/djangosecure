@@ -172,8 +172,8 @@ class EncryptedStoredSettings(object):
             self.save_encrypted_setting(section, option, setting)
         return setting
 
-    def modify(self, section, option, test_value=None):
-        raise NotImplementedError('Coming Soon')
+    # def modify(self, section, option, test_value=None):
+    #     raise NotImplementedError('Coming Soon')
 
     def read_encrypted_config(self):
         return self.encrypted_config.read(self.config_file_path)
@@ -217,14 +217,18 @@ def use_password_prompt(message):
     return False
 
 
-class HiddenSettings(EncryptedStoredSettings):
-    def __init__(self, hidden_settings_path=DEFAULT_HIDDEN_SETTINGS):
-        self.config_file_path = hidden_settings_path
-        super(HiddenSettings, self).__init__()
+# class HiddenSettings(EncryptedStoredSettings):
+#     def __init__(self, hidden_settings_path=DEFAULT_HIDDEN_SETTINGS):
+#         self.config_file_path = hidden_settings_path
+#         super(HiddenSettings, self).__init__()
 
 
 class DjangoDatabaseSettings(EncryptedStoredSettings):
-    pass
+
+    def database(self, alias, test=False):
+        # TODO: Refactor
+        return get_database(alias, path=self.config_file_path,
+                            cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=test)
 
 
 def python3_decode_utf8(text):
@@ -298,7 +302,7 @@ def create_database_config_file(database, path=None, cryptokey=None, test=None):
             config.set(database, 'HOST', encrypt('test_host', hexkey=cryptokey))
             config.set(database, 'PORT', encrypt('5432', hexkey=cryptokey))
 
-        with open(cfg_path, 'w') as cfgfile:
+        with open(cfg_path, b'w') as cfgfile:
             config.write(cfgfile)
 
 
@@ -331,17 +335,17 @@ def read_key_file(path):
     return cryptokey
 
 
-def get_database(database, path=None, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=None):
+def get_database(database_alias, path=None, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=None):
     """
     Returns a database config
-    :param database: Config file section
+    :param database_alias: Config file section
     :param path: Config file path
     :param cryptokey: ...
     :param test: Used for tests
     :return: dict(Database config)
     """
 
-    database = database.replace('default', 'default_db')
+    database_alias = database_alias.replace('default', 'default_db')
     config = configparser.ConfigParser()
     if path is None:
         cfg_path = DEFAULT_DATABASES_CONF
@@ -349,16 +353,16 @@ def get_database(database, path=None, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY
         cfg_path = path
     config.read(cfg_path)
 
-    if database in config.sections():
+    if database_alias in config.sections():
         dbconfig = {}
-        options = config.options(database)
+        options = config.options(database_alias)
         for option in options:
-            dbconfig[option.upper()] = decrypt(config.get(database, option), hexkey=cryptokey)
+            dbconfig[option.upper()] = decrypt(config.get(database_alias, option), hexkey=cryptokey)
         return dbconfig
     else:
-        create_database_config_file(database.replace('default_db', 'default'), path=cfg_path, cryptokey=cryptokey, test=test)
+        create_database_config_file(database_alias.replace('default_db', 'default'), path=cfg_path, cryptokey=cryptokey, test=test)
 
-        return get_database(database.replace('default_db', 'default'), path=cfg_path, cryptokey=cryptokey)
+        return get_database(database_alias.replace('default_db', 'default'), path=cfg_path, cryptokey=cryptokey)
 
 
 def encrypt(pwd, hexkey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), padchar='%', block_size=32):
