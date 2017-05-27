@@ -4,8 +4,8 @@ test:
   tags:
   - docker_python2.7
 
-  before_script:
-  - apt-get install apt-get install python-dev libgmp-dev gcc
+#  before_script:
+#  - apt-get install apt-get install python-dev libgmp-dev gcc
 
   script:
   - pip install -r requirements.txt
