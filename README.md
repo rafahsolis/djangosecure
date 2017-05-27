@@ -11,6 +11,7 @@ You can use it at your project settings.py file
 * Developed for Linux/Python2.7, Python3.5
 
 # Install
+Linux required packages: python-dev libgmp-dev gcc
 ```pip install djangosecure```
 
 # Examples
