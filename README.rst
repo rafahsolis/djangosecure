@@ -1,7 +1,8 @@
 djangosecure
 ============
 
-Secure Django settings (Works with other Python scripts)
+|build status| |coverage report| Secure Django settings (Works with
+other Python scripts)
 
 This module creates a cryptokey outside the django project directory,
 encrypts with that cryptokey your django sensible settings and stores
@@ -95,3 +96,8 @@ To encrypt any other setting use hidde\_setting, for example
         )
 
 -  Note: File and path are automatically created at first call
+
+.. |build status| image:: https://git.herrerosolis.com/rafahsolis/djangosecure/badges/master/build.svg
+   :target: https://git.herrerosolis.com/rafahsolis/djangosecure/commits/master
+.. |coverage report| image:: https://git.herrerosolis.com/rafahsolis/djangosecure/badges/master/coverage.svg
+   :target: https://git.herrerosolis.com/rafahsolis/djangosecure/commits/master

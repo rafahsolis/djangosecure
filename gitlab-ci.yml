@@ -1,0 +1,11 @@
+image: rafahsolis/rpi_python:0.0.1
+
+test:
+  tags: docker_python2.7
+
+  script:
+  - nosetests --with-coverage --cover-erase --cover-package=. --cover-html
+
+  artifacts:
+    paths:
+    - cover
