@@ -1,9 +1,11 @@
 image: rafahsolis/rpi_python:0.0.1
 
 test:
-  tags: docker_python2.7
+  tags:
+  - docker_python2.7
 
   script:
+  - pip install -r requirements.txt
   - nosetests --with-coverage --cover-erase --cover-package=. --cover-html
 
   artifacts:
