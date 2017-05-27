@@ -1,8 +1,19 @@
 # django secure changelog
 (Using Semantic Versioning)
-## [unreleased] - 2017-
+## [0.0.4] - 2017-
 ### Changed
   - Encode utf-8 before returning decoded for Python 3 @djangosecure.cryptolib.decrypt()
+  - Removed all functions, refactored to classes, breaking version compatibility (still at 0.0... so no mayor version increase required)
+### Added
+  - DjangoDatabaseSettings
+  - DjangoSecretKey
+  - EncryptedStoredSettings
+
+## [0.0.3]  - 2017-01-22
+  - BugFixes
+  
+## [0.0.2]  - 2017-01-22
+  - BugFixes
 
 ## [0.0.1]  - 2017-01-21
 ### Added

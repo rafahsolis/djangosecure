@@ -18,8 +18,11 @@ def read(name, mode='rb', encoding='utf8'):
     if os.path.exists('README.rst'):
         long_description = open('README.rst').read()
     else:
-        with open(here(name), mode) as fp:
-            long_description = fp.read().decode(encoding)
+        try:
+            with open(here(name), mode) as fp:
+                long_description = fp.read().decode(encoding)
+        except IOError:
+            return 'Error generating long description: {} File not found'.format(here(name))
     return long_description
 
 # Development Status :: 1 - Planning
@@ -32,10 +35,10 @@ def read(name, mode='rb', encoding='utf8'):
 
 setup(
     name='djangosecure',
-    version='v0.0.3',
+    version='v0.0.4',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
-    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.3',
+    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.4',
     license='Apache License, Version 2.0',
     author='Rafael Herrero Solis',
     author_email='rafael@herrerosolis.com',

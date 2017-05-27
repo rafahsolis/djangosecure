@@ -22,10 +22,6 @@ from Crypto.Cipher import AES
 from .fileslib import check_or_create_dir
 from djangosecure.errors import ImproperlyConfiguredError
 
-# TODO WIP: Refactor classes
-
-
-# Default file paths
 DEFAULT_CRYPTO_KEY_FILE = os.path.expanduser('~/.private/django_secure.key')
 DEFAULT_DATABASES_CONF = os.path.expanduser('~/.private/django_databases.cnf')
 DEFAULT_HIDDEN_SETTINGS = os.path.expanduser('~/.private/django_secure_hidden_settings.cnf')
@@ -49,7 +45,6 @@ class Cipher(object):
     def check_crypto_key(self):
         if self.crypto_key is None:
             self.crypto_key = self.gen_key()
-            warnings.warn('No crypto key found, using: {}'.format(self.crypto_key))  # TODO: Remove this warning
 
     def encrypt(self, plain_text):
         raise NotImplementedError('Must be defined at subclass')
@@ -62,10 +57,6 @@ class Cipher(object):
 
 
 class AESCipher(Cipher):
-    """
-    from djangosecure.cryptolib import AESCipher
-    c = AESCipher('sample/key.k')
-    """
     block_size = 32
     pad_char = '%'
 
@@ -115,11 +106,7 @@ class AESCipher(Cipher):
 
 
 class CryptoKeyFileManager(object):
-    """
-    Usage:
-        from djangosecure.cryptolib import CryptoKeyFileManager
-        crypto_key = CryptoKeyFileManager('crypto/key/path.txt')
-    """
+
     CipherClass = AESCipher
 
     def __init__(self, crypto_key_path):
@@ -158,10 +145,11 @@ class EncryptedStoredSettings(object):
         self.cipher_manager = CryptoKeyFileManager(crypto_key_file)
         self.config_file_path = config_file_path
         self.check_config_file_path_has_been_set()
+        check_or_create_dir(os.path.dirname(self.config_file_path))
         self.test_mode = test_mode
         self.encrypted_config = configparser.ConfigParser()
-        self.read_encrypted_config()
         self.cipher = self.cipher_manager.cipher
+        self.read_encrypted_config()
 
     def get(self, section, option, test_value=None):
         try:
@@ -171,9 +159,6 @@ class EncryptedStoredSettings(object):
             setting = self.prompt(message="[{}] {}".format(section, option), test_value=test_value)
             self.save_encrypted_setting(section, option, setting)
         return setting
-
-    # def modify(self, section, option, test_value=None):
-    #     raise NotImplementedError('Coming Soon')
 
     def read_encrypted_config(self):
         return self.encrypted_config.read(self.config_file_path)
@@ -187,7 +172,6 @@ class EncryptedStoredSettings(object):
             self.encrypted_config.add_section(section)
 
     def save_encrypted_setting(self, section, option, value):
-        # value = self.cipher.encrypt(value)
         self.check_or_create_section(section)
         self.encrypted_config.set(section, option, self.cipher.encrypt(value))
         self.write_encrypted_config()
@@ -195,10 +179,10 @@ class EncryptedStoredSettings(object):
     def check_config_file_path_has_been_set(self):
         if self.config_file_path is None:
             raise ImproperlyConfiguredError("{} should define config_file_path attribute, where the encripted settings\n"
-                                            "will be stored.".format(
-                self.__class__.__name__))
+                                            "will be stored.".format(self.__class__.__name__))
 
-    def prompt(self, message, test_value=None, hide=False):
+    @staticmethod
+    def prompt(message, test_value=None, hide=False):
         """
         Deal with python2 python3 input differences and don't show what's typed for password like inputs
         """
@@ -217,233 +201,78 @@ def use_password_prompt(message):
     return False
 
 
-# class HiddenSettings(EncryptedStoredSettings):
-#     def __init__(self, hidden_settings_path=DEFAULT_HIDDEN_SETTINGS):
-#         self.config_file_path = hidden_settings_path
-#         super(HiddenSettings, self).__init__()
-
-
 class DjangoDatabaseSettings(EncryptedStoredSettings):
-
-    def database(self, alias, test=False):
-        # TODO: Refactor
-        return get_database(alias, path=self.config_file_path,
-                            cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=test)
-
-
-def python3_decode_utf8(text):
-    if six.PY3:
-        text = text.decode('utf-8')
-    return text
-
-
-def gen_aes_key(block_size=32):
-    warnings.warn('DEPRECATED: use AESCipher().crypto_key instead')
-    key = os.urandom(block_size)
-    return binascii.hexlify(key)
-
-
-def create_key_file(path):
-    """
-    Creates a key file
-    :param path: Path to store the file
-    :return:
-    """
-    warnings.warn('Deprecated function, use CryptoKeyFileManager instead')
-    check_or_create_dir(os.path.dirname(path))
-    os.chmod(os.path.dirname(path), stat.S_IRWXU)
-    cryptokey = gen_aes_key()
-
-    with open(path, b'w') as key_file:
-        if six.PY3:
-            key_file.write(cryptokey.decode('utf-8'))
-        else:
-            key_file.write(cryptokey)
-        os.chmod(path, stat.S_IRUSR + stat.S_IWRITE)
-    return cryptokey
-
-
-def create_database_config_file(database, path=None, cryptokey=None, test=None):
-    """
-    Creates a database config file, all data will be encrypted
-    :param database: Identifier for the database connection
-    :param path: (optional) Path to the file that will store the database connection
-    :param cryptokey: :param cryptokey: (Optional) Cryptographic key, WARNING: This should not be stored in your script,
-    if you are not sure leave the defaullt value
-    :param test: Used for tests
-    :return:
-    """
-
-    database = database.replace('default', 'default_db')
+    test = None
     config = configparser.ConfigParser()
-    if path is None:
-        cfg_path = DEFAULT_DATABASES_CONF
-    else:
-        cfg_path = path
-    check_or_create_dir(os.path.dirname(cfg_path))
-    config.read(cfg_path)
+    alias = None
+    alias_fixed = None
 
-    if database not in config.sections():
-        config.add_section('{}'.format(database))
-        if test is None:
-            config.set(database, 'ENGINE', encrypt(
-                DATABASE_ENGINES[prompt('Database engine (options: postgres, mysql, sqlite, oracle)')], hexkey=cryptokey))
-            config.set(database, 'NAME', encrypt(prompt('Database name'), hexkey=cryptokey))
-            config.set(database, 'USER', encrypt(prompt('Database user'), hexkey=cryptokey))
-            config.set(database, 'PASSWORD', encrypt(password_prompt(), hexkey=cryptokey))
-            config.set(database, 'HOST', encrypt(prompt('Database host'), hexkey=cryptokey))
-            config.set(database, 'PORT', encrypt(prompt('Database port'), hexkey=cryptokey))
+    def settings(self, alias, test=None):
+        self.alias = alias
+        self.alias_fixed = self.alias.replace('default', 'default_db')
+        self.create_alias_if_not_in_config()
+        self.test = test
+        return self.get_database()
+
+    def create_alias_if_not_in_config(self):
+        if self.alias_fixed not in self.config.sections():
+            self.config.add_section('{}'.format(self.alias_fixed))
+
+    def get_database(self):
+        config = configparser.ConfigParser()
+        if self.config_file_path is None:
+            cfg_path = DEFAULT_DATABASES_CONF
         else:
-            config.set(database, 'ENGINE', encrypt(
-                DATABASE_ENGINES['postgres'], hexkey=cryptokey))
-            config.set(database, 'NAME', encrypt('test_db_name', hexkey=cryptokey))
-            config.set(database, 'USER', encrypt('test_user', hexkey=cryptokey))
-            config.set(database, 'PASSWORD', encrypt('test_password', hexkey=cryptokey))
-            config.set(database, 'HOST', encrypt('test_host', hexkey=cryptokey))
-            config.set(database, 'PORT', encrypt('5432', hexkey=cryptokey))
+            cfg_path = self.config_file_path
+        config.read(cfg_path)
 
-        with open(cfg_path, b'w') as cfgfile:
-            config.write(cfgfile)
+        if self.alias_fixed in config.sections():
+            dbconfig = {}
+            options = config.options(self.alias_fixed)
+            for option in options:
+                dbconfig[option.upper()] = self.cipher.decrypt(config.get(self.alias_fixed, option))
+            return dbconfig
+        else:
+            self.create_database_config_file()
 
+            return self.get_database()
 
-def password_prompt(message='Password'):
-    pass1 = 0
-    pass2 = 1
-    message.replace(' :', '')
-    while pass1 != pass2:
-        pass1 = getpass.getpass('Enter {message}'.format(message=message))
-        pass2 = getpass.getpass('Confirm {message}'.format(message=message))
+    def create_database_config_file(self):
 
-        if pass1 != pass2:
-            print("\nPasswords don't match, try again...\n")
-    return pass1
+        if self.test is None:
+            self.prompt_for_database_settings(self.config)
+        else:
+            self.set_test(self.config, self.alias)
 
+        with open(self.config_file_path, b'w') as cfgfile:
+            self.config.write(cfgfile)
 
-def read_key_file(path):
-    """
-    :param path:
-    :return:
-    """
-    try:
-        with open(path, b'r') as secret_file:
-            cryptokey = secret_file.read().strip()
+    def prompt_for_database_settings(self, config):
+        self.prompt_for_database_engine(config, self.alias)
+        for setting_key in ['NAME', 'HOST', 'PORT', 'USER']:
+            config.set(self.alias_fixed, setting_key, self.cipher.encrypt(prompt('Database {}'.format(setting_key))))
+        config.set(self.alias_fixed, 'PASSWORD', self.cipher.encrypt(password_prompt()))
 
-    except IOError:
+    def prompt_for_database_engine(self, config, alias):
+        config.set(alias.replace('default', 'default_db'), 'ENGINE', self.cipher.encrypt(
+            DATABASE_ENGINES[prompt('Database engine (options: postgres, mysql, sqlite, oracle)')]))
 
-        print("Cryptokey not found in {crpath}, creating random key".format(crpath=path))
-        cryptokey = create_key_file(path)
-    return cryptokey
+    def set_test(self, test, alias):
+        if isinstance(test, dict):
+            self.set_test_from_dict(test, alias)
+        else:
+            self.set_test_from_dict({
+                'ENGINE': DATABASE_ENGINES['postgres'],
+                'NAME': 'test_db_name',
+                'USER': 'test_user',
+                'PASSWORD': 'test_password',
+                'HOST': 'test_host',
+                'PORT': '5432',
+            }, alias)
 
-
-def get_database(database_alias, path=None, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=None):
-    """
-    Returns a database config
-    :param database_alias: Config file section
-    :param path: Config file path
-    :param cryptokey: ...
-    :param test: Used for tests
-    :return: dict(Database config)
-    """
-
-    database_alias = database_alias.replace('default', 'default_db')
-    config = configparser.ConfigParser()
-    if path is None:
-        cfg_path = DEFAULT_DATABASES_CONF
-    else:
-        cfg_path = path
-    config.read(cfg_path)
-
-    if database_alias in config.sections():
-        dbconfig = {}
-        options = config.options(database_alias)
-        for option in options:
-            dbconfig[option.upper()] = decrypt(config.get(database_alias, option), hexkey=cryptokey)
-        return dbconfig
-    else:
-        create_database_config_file(database_alias.replace('default_db', 'default'), path=cfg_path, cryptokey=cryptokey, test=test)
-
-        return get_database(database_alias.replace('default_db', 'default'), path=cfg_path, cryptokey=cryptokey)
-
-
-def encrypt(pwd, hexkey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), padchar='%', block_size=32):
-    """
-    Encrypt pwd
-    :param pwd:
-    :param hexkey:
-    :param padchar:
-    :param block_size:
-    :return:
-    """
-    key = binascii.unhexlify(hexkey)
-    pad = lambda s: s + (block_size - len(s) % block_size) * padchar
-    EncodeAES = lambda c, s: base64.b64encode(c.encrypt(pad(s)))
-    cipher = AES.new(key)
-    encoded = EncodeAES(cipher, pwd)
-    if six.PY3:
-        encoded = encoded.decode('utf-8')
-    return encoded
-
-
-def decrypt(cyphertext, hexkey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), padchar=b'%'):
-    """
-    Decrypt encrypted text
-    :param cyphertext: Encrypted text
-    :param hexkey: Hexadecimal key used to encrypt the text.
-    :param padchar: Padding character
-    :return: Decrypted text (None if error)
-    """
-    try:
-        key = binascii.unhexlify(hexkey)
-    except TypeError:
-        return None
-
-    DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(padchar)
-    key = key
-    cipher = AES.new(key)
-
-    try:
-        decoded = DecodeAES(cipher, cyphertext)
-    except TypeError:
-        return None
-
-    if six.PY3:
-        decoded = decoded.decode('utf-8')
-
-    return decoded
-
-
-def get_secret_key(secret_file_path, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE)):
-
-    # logger.info("Reading existing key from: {path}".format(path=secret_file_path))
-    path = os.path.dirname(secret_file_path)
-    if not path:
-        path = '.'
-    check_or_create_dir(path)
-    try:
-        key = open(secret_file_path).read().strip()
-    except IOError:
-
-        key = ''.join(
-                [random.SystemRandom().choice("{}{}{}".format(string.ascii_letters, string.digits, string.punctuation))
-                 for i in range(50)])
-        try:
-            key = encrypt(key, hexkey=cryptokey)
-
-            with open(secret_file_path, 'w') as secret:
-                secret.write(key)
-                os.chmod(secret_file_path, stat.S_IRUSR)
-
-                # logger.info("Saving new SECRET_KEY to: {path}".format(path=secret_file_path))
-
-        except IOError:
-            # logger.error("Secret key file (%s) could not be created. "
-            #              "Please create the file with the following secret key: "
-            #              "\n %s \n or review file permissions!" % (secret_file_path, encrypt(key)))
-            print("Secret key file (%s) could not be created. "
-                  "Please create the file with the following secret key: "
-                  "\n %s \n or review file permissions!" % (secret_file_path, encrypt(key)))
-            return None
-    return decrypt(key, cryptokey)
+    def set_test_from_dict(self, test, database_alias):
+        for k, v in test.items():
+            self.config.set(database_alias.replace('default', 'default_db'), k, self.cipher.encrypt(v))
 
 
 def prompt(message, test_value=None):
@@ -460,98 +289,45 @@ def prompt(message, test_value=None):
         return input('%s: ' % message)
 
 
-def get_s3_config(section, option, path=None, cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), prompt_funct=prompt):
-    """
-    Returns S3 bucket access info
-    :param section: configparser section (str)
-    :param option: configparser option (str)
-    :param path: configuration file path
-    :param cryptokey: (Optional) Cryptographic key, WARNING: This should not be stored in your script,
-     if you are not sure leave the default value
-    :param prompt_funct: (Optional) Function to retrieve password
-    :return:
-    """
+def password_prompt(message='Password'):
+    pass1 = 0
+    pass2 = 1
+    message.replace(' :', '')
+    while pass1 != pass2:
+        pass1 = getpass.getpass('Enter {message}: '.format(message=message))
+        pass2 = getpass.getpass('Confirm {message}: '.format(message=message))
 
-    s3_basic_config = ['aws_bucket_name', 'S3_access_IAM_Key_Id', 'S3_access_IAM_Secret_Key']
-
-    # TODO: Manage incomplete config files
-    config = configparser.ConfigParser()
-    if path is None:
-        cfg_path = DEFAULT_HIDDEN_SETTINGS
-
-    else:
-        cfg_path = path
-    config.read(cfg_path)
-
-    # If section does not exist, create section
-    if section not in config.sections():
-        config.add_section('{}'.format(section))
-
-        for option in s3_basic_config:
-            config.set(section, option, encrypt(prompt_funct(option.replace('_', ' ')), hexkey=cryptokey))
-            check_or_create_dir(os.path.dirname(cfg_path))
-
-        with open(cfg_path, 'w') as cfgfile:
-            config.write(cfgfile)
-        config.read(cfg_path)
-
-    try:
-        return decrypt(config.get(section, option), cryptokey)
-    except configparser.NoOptionError:
-        config.set(section, option, encrypt(prompt_funct(option.replace('_', ' ')), hexkey=cryptokey))
-        with open(cfg_path, 'w') as cfgfile:
-            config.write(cfgfile)
-        config.read(cfg_path)
-        return get_s3_config(section, option, path=path, cryptokey=cryptokey)
+        if pass1 != pass2:
+            print("\nPasswords don't match, try again...\n")
+    return pass1
 
 
-def create_hidden_setting(section, option, config, config_file,
-                          cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=None):
-    """
-    Prompts for a value for the [section] option value, saves it to the configuration file and returns
-    :param section: configparser section (str)
-    :param option: configparser option (str)
-    :param config: configparser.ConfigParser() object
-    :param config_file: path to configuration file
-    :param cryptokey: (Optional) Cryptographic key, WARNING: This should not be stored in your script,
-    if you are not sure leave the defaullt value
-    :return: Encrypted value for [section] option at config_file
-    :param test: Used for tests
-    """
-    if test is None:
-        input_option = encrypt(prompt('[{0}] {1}'.format(section, option)), hexkey=cryptokey)
-    else:
-        input_option = encrypt(prompt('[{0}] {1}'.format(section, option), test_value=test), hexkey=cryptokey)
-    check_or_create_dir(os.path.dirname(config_file))
-    if section not in config.sections():
-        config.add_section(section)
-
-    config.set(section, option, input_option)
-    with open(config_file, 'w') as cfgfile:
-        config.write(cfgfile)
-    return input_option
+def python3_decode_utf8(text):
+    if six.PY3:
+        text = text.decode('utf-8')
+    return text
 
 
-def hidden_setting(section, option, config_file=DEFAULT_HIDDEN_SETTINGS,
-                   cryptokey=read_key_file(DEFAULT_CRYPTO_KEY_FILE), test=None):
-    """
-    Get some sensible setting value, will prompt for it if it was not found on config_file
-    :param section: configparser section (str)
-    :param option: configparser option (str)
-    :param config_file: (Optional) Configuration file were the encrypted settings are stored
-    :param cryptokey: (Optional) Cryptographic key, WARNING: This should not be stored in your script,
-     if you are not sure leave the default value
-    :param test: Used for tests
-    :return: Decrypted value for [section] option @ config_file
-    """
+class DjangoSecretKey(EncryptedStoredSettings):
+    @property
+    def key(self):
+        try:
+            return self.cipher.decrypt(open(self.config_file_path).read().strip())
+        except IOError:
+            return self.create_encripted_config()
 
-    config = configparser.ConfigParser()
-    config.read(config_file)
+    def read_encrypted_config(self):
+        pass
 
-    try:
-        setting = decrypt(config.get(section, option), hexkey=cryptokey)
-    except (configparser.NoSectionError, configparser.NoOptionError):
-        return decrypt(create_hidden_setting(section, option, config=config, config_file=config_file, cryptokey=cryptokey,
-                                             test=test),
-                       hexkey=cryptokey)
-    return setting
+    def create_encripted_config(self):
+        key = self.generate_random_secret_key()
+        with open(self.config_file_path, b'w') as secret:
+            secret.write(self.cipher.encrypt(key))
+        return key
+
+    @staticmethod
+    def generate_random_secret_key():
+        key = ''.join(
+            [random.SystemRandom().choice("{}{}{}".format(string.ascii_letters, string.digits, string.punctuation))
+             for i in range(50)])
+        return key
