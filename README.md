@@ -1,4 +1,6 @@
 # djangosecure
+[![build status](https://git.herrerosolis.com/rafahsolis/djangosecure/badges/master/build.svg)](https://git.herrerosolis.com/rafahsolis/djangosecure/commits/master)
+[![coverage report](https://git.herrerosolis.com/rafahsolis/djangosecure/badges/master/coverage.svg)](https://git.herrerosolis.com/rafahsolis/djangosecure/commits/master)
 Secure Django settings (Works with other Python scripts)
 
 This module creates a cryptokey outside the django project directory, encrypts with that cryptokey your django sensible
