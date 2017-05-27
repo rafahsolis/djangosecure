@@ -153,10 +153,11 @@ class EncryptedStoredSettings(object):
         self.cipher_manager = CryptoKeyFileManager(crypto_key_file)
         self.config_file_path = config_file_path
         self.check_config_file_path_has_been_set()
+        check_or_create_dir(os.path.dirname(self.config_file_path))
         self.test_mode = test_mode
         self.encrypted_config = configparser.ConfigParser()
-        self.read_encrypted_config()
         self.cipher = self.cipher_manager.cipher
+        self.read_encrypted_config()
 
     def get(self, section, option, test_value=None):
         try:
@@ -166,9 +167,6 @@ class EncryptedStoredSettings(object):
             setting = self.prompt(message="[{}] {}".format(section, option), test_value=test_value)
             self.save_encrypted_setting(section, option, setting)
         return setting
-
-    # def modify(self, section, option, test_value=None):
-    #     raise NotImplementedError('Coming Soon')
 
     def read_encrypted_config(self):
         return self.encrypted_config.read(self.config_file_path)
@@ -182,7 +180,6 @@ class EncryptedStoredSettings(object):
             self.encrypted_config.add_section(section)
 
     def save_encrypted_setting(self, section, option, value):
-        # value = self.cipher.encrypt(value)
         self.check_or_create_section(section)
         self.encrypted_config.set(section, option, self.cipher.encrypt(value))
         self.write_encrypted_config()
@@ -190,10 +187,10 @@ class EncryptedStoredSettings(object):
     def check_config_file_path_has_been_set(self):
         if self.config_file_path is None:
             raise ImproperlyConfiguredError("{} should define config_file_path attribute, where the encripted settings\n"
-                                            "will be stored.".format(
-                self.__class__.__name__))
+                                            "will be stored.".format(self.__class__.__name__))
 
-    def prompt(self, message, test_value=None, hide=False):
+    @staticmethod
+    def prompt(message, test_value=None, hide=False):
         """
         Deal with python2 python3 input differences and don't show what's typed for password like inputs
         """
@@ -215,75 +212,57 @@ def use_password_prompt(message):
 class DjangoDatabaseSettings(EncryptedStoredSettings):
     test = None
     config = configparser.ConfigParser()
+    alias = None
+    alias_fixed = None
 
-    def database(self, alias, test=None):
-
-        self.create_alias_if_not_in_config(alias)
+    def settings(self, alias, test=None):
+        self.alias = alias
+        self.alias_fixed = self.alias.replace('default', 'default_db')
+        self.create_alias_if_not_in_config()
         self.test = test
-        return self.get_database(alias, path=self.config_file_path, test=test)
+        return self.get_database()
 
-    def create_alias_if_not_in_config(self, alias):
-        database = self.read_database_from_config(alias)
+    def create_alias_if_not_in_config(self):
+        if self.alias_fixed not in self.config.sections():
+            self.config.add_section('{}'.format(self.alias_fixed))
 
-        if database not in self.config.sections():
-            self.config.add_section('{}'.format(database))
-
-    def get_database(self, database_alias, path=None, test=None):
-        database_alias = database_alias.replace('default', 'default_db')
+    def get_database(self):
         config = configparser.ConfigParser()
-        if path is None:
-            cfg_path = DEFAULT_DATABASES_CONF
-        else:
-            cfg_path = path
-        config.read(cfg_path)
-
-        if database_alias in config.sections():
-            dbconfig = {}
-            options = config.options(database_alias)
-            for option in options:
-                dbconfig[option.upper()] = self.cipher.decrypt(config.get(database_alias, option))
-            return dbconfig
-        else:
-            self.create_database_config_file(database_alias.replace('default_db', 'default'))
-
-            return self.get_database(database_alias.replace('default_db', 'default'), path=cfg_path)
-
-    def create_database_config_file(self, database):
-        """
-        Creates a database config file, all data will be encrypted
-        :param database: Identifier for the database connection
-        :param path: (optional) Path to the file that will store the database connection
-        :param test: True/False; If true avoids prompt for settings
-        :return:
-        """
-
-        if self.test is None:
-            self.prompt_for_database_settings(self.config, database)
-        else:
-            self.set_test(self.config, database)
-
-        with open(self.config_file_path, b'w') as cfgfile:
-            self.config.write(cfgfile)
-
-    def read_database_from_config(self, database):
-        database = database.replace('default', 'default_db')
         if self.config_file_path is None:
             cfg_path = DEFAULT_DATABASES_CONF
         else:
             cfg_path = self.config_file_path
+        config.read(cfg_path)
 
-        check_or_create_dir(os.path.dirname(cfg_path))
-        self.config.read(cfg_path)
-        return database
+        if self.alias_fixed in config.sections():
+            dbconfig = {}
+            options = config.options(self.alias_fixed)
+            for option in options:
+                dbconfig[option.upper()] = self.cipher.decrypt(config.get(self.alias_fixed, option))
+            return dbconfig
+        else:
+            self.create_database_config_file()
 
-    def prompt_for_database_settings(self, config, database):
-        self.prompt_for_database_engine(config, database)
+            return self.get_database()
+
+    def create_database_config_file(self):
+
+        if self.test is None:
+            self.prompt_for_database_settings(self.config)
+        else:
+            self.set_test(self.config, self.alias)
+
+        with open(self.config_file_path, b'w') as cfgfile:
+            self.config.write(cfgfile)
+
+    def prompt_for_database_settings(self, config):
+        self.prompt_for_database_engine(config, self.alias)
         for setting_key in ['NAME', 'HOST', 'PORT', 'USER']:
-            config.set(database, setting_key, self.cipher.encrypt(prompt('Database {}'.format(setting_key))))
-        config.set(database, 'PASSWORD', self.cipher.encrypt(password_prompt()))
+            config.set(self.alias_fixed, setting_key, self.cipher.encrypt(prompt('Database {}'.format(setting_key))))
+        config.set(self.alias_fixed, 'PASSWORD', self.cipher.encrypt(password_prompt()))
 
-    def prompt_for_database_engine(self, config, database):
-        config.set(database, 'ENGINE', self.cipher.encrypt(
+    def prompt_for_database_engine(self, config, alias):
+        config.set(alias.replace('default', 'default_db'), 'ENGINE', self.cipher.encrypt(
             DATABASE_ENGINES[prompt('Database engine (options: postgres, mysql, sqlite, oracle)')]))
 
     def set_test(self, test, alias):
@@ -323,8 +302,8 @@ def password_prompt(message='Password'):
     pass2 = 1
     message.replace(' :', '')
     while pass1 != pass2:
-        pass1 = getpass.getpass('Enter {message}'.format(message=message))
-        pass2 = getpass.getpass('Confirm {message}'.format(message=message))
+        pass1 = getpass.getpass('Enter {message}: '.format(message=message))
+        pass2 = getpass.getpass('Confirm {message}: '.format(message=message))
 
         if pass1 != pass2:
             print("\nPasswords don't match, try again...\n")
@@ -341,13 +320,22 @@ class DjangoSecretKey(EncryptedStoredSettings):
     @property
     def key(self):
         try:
-            key = self.cipher.decrypt(open(self.config_file_path).read().strip())
+            return self.cipher.decrypt(open(self.config_file_path).read().strip())
         except IOError:
+            return self.create_encripted_config()
 
-            key = ''.join(
-                    [random.SystemRandom().choice("{}{}{}".format(string.ascii_letters, string.digits, string.punctuation))
-                     for i in range(50)])
+    def read_encrypted_config(self):
+        pass
 
-            with open(self.config_file_path, b'w') as secret:
-                secret.write(self.cipher.encrypt(key))
+    def create_encripted_config(self):
+        key = self.generate_random_secret_key()
+        with open(self.config_file_path, b'w') as secret:
+            secret.write(self.cipher.encrypt(key))
+        return key
+
+    @staticmethod
+    def generate_random_secret_key():
+        key = ''.join(
+            [random.SystemRandom().choice("{}{}{}".format(string.ascii_letters, string.digits, string.punctuation))
+             for i in range(50)])
         return key

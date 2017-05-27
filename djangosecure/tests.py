@@ -1,9 +1,6 @@
-# from __future__ import unicode_literals
 import os
 from unittest import TestCase
-
 import six
-
 import djangosecure
 from djangosecure.cryptolib import (
     CryptoKeyFileManager,
@@ -79,7 +76,8 @@ class TestCriptolib(DjangoSecureTestCase):
         self.assertTrue(os.path.isfile(new_cryptokey.path))
 
     def test_get_database(self):
-        database = self.database_settings.database('default', test=True)
+        database = self.database_settings.settings('default', test=True)
+        self.assertEqual(self.database_settings.config_file_path, self.files['db_path'])
         self.assertDictEqual(database, {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': 'test_db_name',
@@ -91,5 +89,6 @@ class TestCriptolib(DjangoSecureTestCase):
 
     def test_get_secret_key(self):
         secret_key = DjangoSecretKey(self.files['secret_key'])
+        self.assertEqual(secret_key.config_file_path, self.files['secret_key'])
         self.assertIsNotNone(secret_key.key)
         self.assertTrue(os.path.isfile(secret_key.config_file_path))
