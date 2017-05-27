@@ -57,10 +57,6 @@ class Cipher(object):
 
 
 class AESCipher(Cipher):
-    """
-    from djangosecure.cryptolib import AESCipher
-    c = AESCipher('sample/key.k')
-    """
     block_size = 32
     pad_char = '%'
 
@@ -110,11 +106,7 @@ class AESCipher(Cipher):
 
 
 class CryptoKeyFileManager(object):
-    """
-    Usage:
-        from djangosecure.cryptolib import CryptoKeyFileManager
-        crypto_key = CryptoKeyFileManager('crypto/key/path.txt')
-    """
+
     CipherClass = AESCipher
 
     def __init__(self, crypto_key_path):

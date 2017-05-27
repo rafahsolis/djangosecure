@@ -18,8 +18,11 @@ def read(name, mode='rb', encoding='utf8'):
     if os.path.exists('README.rst'):
         long_description = open('README.rst').read()
     else:
-        with open(here(name), mode) as fp:
-            long_description = fp.read().decode(encoding)
+        try:
+            with open(here(name), mode) as fp:
+                long_description = fp.read().decode(encoding)
+        except IOError:
+            return 'Error generating long description: {} File not found'.format(here(name))
     return long_description
 
 # Development Status :: 1 - Planning
