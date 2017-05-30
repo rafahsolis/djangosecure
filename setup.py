@@ -35,10 +35,10 @@ def read(name, mode='rb', encoding='utf8'):
 
 setup(
     name='djangosecure',
-    version='v0.0.4',
+    version='0.0.5',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
-    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.4',
+    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.5',
     license='Apache License, Version 2.0',
     author='Rafael Herrero Solis',
     author_email='rafael@herrerosolis.com',
