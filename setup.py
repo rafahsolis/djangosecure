@@ -35,7 +35,7 @@ def read(name, mode='rb', encoding='utf8'):
 
 setup(
     name='djangosecure',
-    version='v0.0.4',
+    version='0.0.4',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
     download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.4',
