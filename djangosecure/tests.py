@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import os
 from unittest import TestCase
 import six
@@ -8,6 +9,7 @@ from djangosecure.cryptolib import (
     DjangoDatabaseSettings,
     DjangoSecretKey,
 )
+from io import open
 
 
 # TODO: Increase tests coverage
@@ -59,7 +61,7 @@ class TestCriptolib(DjangoSecureTestCase):
 
     def test_read_key_file(self):
         djangosecure.fileslib.check_or_create_dir(os.path.dirname(self.files['cryptokeyfile']))
-        with open(self.files['cryptokeyfile'], b'w') as key_file:
+        with open(self.files['cryptokeyfile'], 'w') as key_file:
             key_file.write('c8f12b2936034ee019fa1760dd6a4ce7065ead9b00cd20b48af0e408e89a9a02')
         self.assertEqual(djangosecure.cryptolib.CryptoKeyFileManager(self.files['cryptokeyfile']).key,
                          'c8f12b2936034ee019fa1760dd6a4ce7065ead9b00cd20b48af0e408e89a9a02')

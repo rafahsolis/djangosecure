@@ -6,19 +6,20 @@ import six
 import warnings
 from builtins import input
 # import logging
-try:
-    # Python2.7
-    import ConfigParser as configparser
-except ImportError:
-    # Python3
-    import configparser
-
+# try:
+#     # Python2.7
+#     import ConfigParser as configparser
+# except ImportError:
+#     # Python3
+#     import configparser
+from configparser import ConfigParser, NoOptionError, NoSectionError
 import base64
 import binascii
 import getpass
 import random
 import string
 from Crypto.Cipher import AES
+from io import open
 from .fileslib import check_or_create_dir
 from djangosecure.errors import ImproperlyConfiguredError
 
@@ -77,10 +78,10 @@ class AESCipher(Cipher):
 
     def decode_aes(self, ciphered_text):
         try:
-            decoded = self.cipher.decrypt(base64.b64decode(ciphered_text)).rstrip(self.pad_char)
+            decoded = self.cipher.decrypt(base64.b64decode(ciphered_text))
         except TypeError:
             return None
-        return python3_decode_utf8(decoded)
+        return python3_decode_utf8(decoded).rstrip(self.pad_char)
 
     def decrypt(self, ciphered_text):
         try:
@@ -105,6 +106,10 @@ class AESCipher(Cipher):
         return binascii.hexlify(key)
 
 
+"""
+from djangosecure.cryptolib import CryptoKeyFileManager
+a = CryptoKeyFileManager('/root/rm.me')
+"""
 class CryptoKeyFileManager(object):
 
     CipherClass = AESCipher
@@ -115,10 +120,13 @@ class CryptoKeyFileManager(object):
             self.key = self.read_key_file()
         except IOError:
             self.key = self.create_key_file()
+        if self.key is None:
+            self.key = self.create_key_file()
+
         self.cipher = self.CipherClass(self.key)
 
     def read_key_file(self):
-        with open(self.path, b'r') as crypto_key_file:
+        with open(self.path, "r") as crypto_key_file:
             return crypto_key_file.read().strip()
 
     def create_key_file(self):
@@ -127,11 +135,11 @@ class CryptoKeyFileManager(object):
         return self.write_key_file(self.CipherClass().crypto_key)
 
     def write_key_file(self, crypto_key):
-        with open(self.path, b'w') as key_file:
+        with open(self.path, 'w') as key_file:
             if six.PY3:
                 key_file.write(crypto_key.decode('utf-8'))
             else:
-                key_file.write(crypto_key)
+                key_file.write(crypto_key.decode('utf-8'))
             os.chmod(self.path, stat.S_IRUSR + stat.S_IWRITE)
         return crypto_key
 
@@ -147,7 +155,7 @@ class EncryptedStoredSettings(object):
         self.check_config_file_path_has_been_set()
         check_or_create_dir(os.path.dirname(self.config_file_path))
         self.test_mode = test_mode
-        self.encrypted_config = configparser.ConfigParser()
+        self.encrypted_config = ConfigParser()
         self.cipher = self.cipher_manager.cipher
         self.read_encrypted_config()
 
@@ -155,7 +163,7 @@ class EncryptedStoredSettings(object):
         try:
             setting = self.encrypted_config.get(section, option)
             setting = self.cipher.decrypt(setting)
-        except (configparser.NoSectionError, configparser.NoOptionError):
+        except (NoSectionError, NoOptionError):
             setting = self.prompt(message="[{}] {}".format(section, option), test_value=test_value)
             self.save_encrypted_setting(section, option, setting)
         return setting
@@ -164,7 +172,7 @@ class EncryptedStoredSettings(object):
         return self.encrypted_config.read(self.config_file_path)
 
     def write_encrypted_config(self):
-        with open(self.config_file_path, b'w') as cnf_file:
+        with open(self.config_file_path, 'w') as cnf_file:
             self.encrypted_config.write(cnf_file)
 
     def check_or_create_section(self, section):
@@ -203,13 +211,16 @@ def use_password_prompt(message):
 
 class DjangoDatabaseSettings(EncryptedStoredSettings):
     test = None
-    config = configparser.ConfigParser()
+    config = ConfigParser()
     alias = None
     alias_fixed = None
 
     def settings(self, alias, test=None):
         self.alias = alias
+
         self.alias_fixed = self.alias.replace('default', 'default_db')
+        if six.PY2:
+            self.alias_fixed = self.alias_fixed.decode('utf-8')
         self.create_alias_if_not_in_config()
         self.test = test
         return self.get_database()
@@ -219,7 +230,7 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
             self.config.add_section('{}'.format(self.alias_fixed))
 
     def get_database(self):
-        config = configparser.ConfigParser()
+        config = ConfigParser()
         if self.config_file_path is None:
             cfg_path = DEFAULT_DATABASES_CONF
         else:
@@ -244,7 +255,7 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
         else:
             self.set_test(self.config, self.alias)
 
-        with open(self.config_file_path, b'w') as cfgfile:
+        with open(self.config_file_path, 'w') as cfgfile:
             self.config.write(cfgfile)
 
     def prompt_for_database_settings(self, config):
@@ -263,11 +274,11 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
         else:
             self.set_test_from_dict({
                 'ENGINE': DATABASE_ENGINES['postgres'],
-                'NAME': 'test_db_name',
-                'USER': 'test_user',
-                'PASSWORD': 'test_password',
-                'HOST': 'test_host',
-                'PORT': '5432',
+                'NAME': u'test_db_name',
+                'USER': u'test_user',
+                'PASSWORD': u'test_password',
+                'HOST': u'test_host',
+                'PORT': u'5432',
             }, alias)
 
     def set_test_from_dict(self, test, database_alias):
@@ -303,9 +314,18 @@ def password_prompt(message='Password'):
 
 
 def python3_decode_utf8(text):
-    if six.PY3:
+    try:
         text = text.decode('utf-8')
+    except AttributeError:
+        pass
     return text
+
+
+# def safe_unicode(text):
+#     if isinstance(text, unicode):
+#         return text
+#     else:
+#         return text.decode('utf-8')
 
 
 class DjangoSecretKey(EncryptedStoredSettings):
@@ -321,8 +341,8 @@ class DjangoSecretKey(EncryptedStoredSettings):
 
     def create_encripted_config(self):
         key = self.generate_random_secret_key()
-        with open(self.config_file_path, b'w') as secret:
-            secret.write(self.cipher.encrypt(key))
+        with open(self.config_file_path, 'w') as secret:
+            secret.write(python3_decode_utf8(self.cipher.encrypt(key)))
         return key
 
     @staticmethod

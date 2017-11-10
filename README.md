@@ -11,7 +11,7 @@ You can use it at your project settings.py file
 * Developed for Linux/Python2.7, Python3.5
 
 # Install
-Linux required packages: python-dev libgmp-dev gcc
+Linux required packages: python-dev (python3.5-dev if python==3.5) libgmp-dev gcc
 ```pip install djangosecure```
 
 # Examples
@@ -19,7 +19,7 @@ Linux required packages: python-dev libgmp-dev gcc
 
 settings.py
 ```
-from djangosecure import DjangoDatabaseSettings
+from djangosecure import DjangoSecretKey
 
 
 SECRET_KEY_FILE_PATH = '/some/path/to/store/file.secret'
@@ -54,12 +54,12 @@ DATABASES = {
 To encrypt any other setting use EncryptedStoredSettings, for example:
 
 ```
-from djangosecure import DjangoDatabaseSettings, DjangoSecretKey, EncryptedStoredSettings
+from djangosecure import EncryptedStoredSettings
 encripted_settings = EncryptedStoredSettings('./hidden/settings/path'))
 
 CELERY_BROKER = 'amqp://{0}:{1}@localhost//'.format(
-    encripted_settings('celery', 'broker_username', config_file="config/file/path/here.cfg"),
-    encripted_settings('celery', 'broker_password')
+    encripted_settings.get('celery', 'broker_username', config_file="config/file/path/here.cfg"),
+    encripted_settings.get('celery', 'broker_password')
     )
 
 ```

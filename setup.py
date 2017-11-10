@@ -35,10 +35,10 @@ def read(name, mode='rb', encoding='utf8'):
 
 setup(
     name='djangosecure',
-    version='0.0.5',
+    version='0.0.6',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
-    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.5',
+    download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.6',
     license='Apache License, Version 2.0',
     author='Rafael Herrero Solis',
     author_email='rafael@herrerosolis.com',
@@ -48,6 +48,7 @@ setup(
     test_suite='nose.collector',
     tests_require=['nose', 'six'],
     install_requires=[
+        'configparser==3.5.0',
         'pycrypto==2.6.1',
         'Django',
         'six==1.10.0',
