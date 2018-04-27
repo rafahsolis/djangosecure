@@ -64,4 +64,9 @@ CELERY_BROKER = 'amqp://{0}:{1}@localhost//'.format(
 
 ```
 
+
+# Runing tests
+# nosetests --with-coverage --cover-html
+# nosetests --with-coverage --cover-html --cover-inclusive --cover-package=djangosecure
+
 * Note: File and path are automatically created at first call
