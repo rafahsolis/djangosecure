@@ -38,14 +38,14 @@ class DjangoSecureTestCase(TestCase):
         }
         # cls.cryptokey = djangosecure.cryptolib.read_key_file(cls.files['cryptokeyfile'])
 
-    # @classmethod
-    # def tearDownClass(cls):
-    #     for file_dec, path in cls.files.items():
-    #         try:
-    #             os.remove(path)
-    #         except OSError:
-    #             pass
-    #     os.removedirs(cls.output_dir)
+    @classmethod
+    def tearDownClass(cls):
+        for file_dec, path in cls.files.items():
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        os.removedirs(cls.output_dir)
 
 
 class TestCriptolib(DjangoSecureTestCase):
