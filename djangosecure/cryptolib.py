@@ -177,7 +177,8 @@ class CryptoKeyFileManager(object):
     def write_key_file(self, crypto_key):
         with open(self.path, 'wb') as key_file:
             if six.PY3:
-                key_file.write(crypto_key.decode('utf-8'))
+                print('cryptokey: ', crypto_key, 'type:', type(crypto_key))
+                key_file.write(crypto_key)
             else:
                 key_file.write(crypto_key.decode('utf-8'))
             os.chmod(self.path, stat.S_IRUSR + stat.S_IWRITE)
@@ -323,8 +324,11 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
             }, alias)
 
     def set_test_from_dict(self, test, database_alias):
-        for k, v in test.items():
-            self.config.set(database_alias.replace('default', 'default_db'), k, self.cipher.encrypt(v))
+        for option, value in test.items():
+            # print('option:', py3_unicode(option), ' type:', type(py3_unicode(option)))
+            print('value:', py3_unicode(self.cipher.encrypt(value)), type(py3_unicode(self.cipher.encrypt(value))))
+            self.config.set(database_alias.replace('default', 'default_db'), py3_unicode(option), py3_unicode(self.cipher.encrypt(value)))
+            # self.config.set(database_alias.replace('default', 'default_db'), 'fake', 'fake')
 
 
 def prompt(message, test_value=None):
