@@ -35,7 +35,7 @@ def read(name, mode='rb', encoding='utf8'):
 
 setup(
     name='djangosecure',
-    version='0.0.6',
+    version='0.0.7',
     packages=['djangosecure'],
     url='https://github.com/rafahsolis/djangosecure',
     download_url='https://github.com/rafahsolis/djangosecure/tarball/v0.0.6',
@@ -49,7 +49,7 @@ setup(
     tests_require=['nose', 'six'],
     install_requires=[
         'configparser==3.5.0',
-        'pycrypto==2.6.1',
+        'pycryptodome==3.6.1',
         'Django',
         'six==1.10.0',
         'future==0.16.0',
