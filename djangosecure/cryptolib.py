@@ -119,8 +119,8 @@ class AESCipher(Cipher):
         padded = pad(to_bytes(plain_text), self.block_size)
         b = to_bytes(padded)
         encoded = self.cipher.encrypt(b)
-        hex = binascii.hexlify(encoded)
-        return hex
+        hexlified = binascii.hexlify(encoded)
+        return hexlified
 
     def decrypt(self, ciphered_text):
         ciphered_text = binascii.unhexlify(ciphered_text)
@@ -203,6 +203,7 @@ class EncryptedStoredSettings(object):
     def get(self, section, option, test_value=None):
         try:
             setting = self.encrypted_config.get(section, option)
+            print(setting)
             setting = self.cipher.decrypt(setting)
         except (NoSectionError, NoOptionError):
             setting = self.prompt(message="[{}] {}".format(section, option), test_value=test_value)
@@ -213,7 +214,7 @@ class EncryptedStoredSettings(object):
         return self.encrypted_config.read(self.config_file_path)
 
     def write_encrypted_config(self):
-        with open(self.config_file_path, 'wb') as cnf_file:
+        with open(self.config_file_path, 'w') as cnf_file:
             self.encrypted_config.write(cnf_file)
 
     def check_or_create_section(self, section):
@@ -223,7 +224,8 @@ class EncryptedStoredSettings(object):
     def save_encrypted_setting(self, section, option, value):
         self.check_or_create_section(section)
 
-        self.encrypted_config.set(section, option, self.cipher.encrypt(value))
+        self.encrypted_config.set(section, py3_unicode(option), py3_unicode(self.cipher.encrypt(value)))
+        # self.encrypted_config.set(section, option, self.cipher.encrypt(value))
         self.write_encrypted_config()
 
     def check_config_file_path_has_been_set(self):
@@ -297,13 +299,13 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
         else:
             self.set_test(self.config, self.alias)
 
-        with open(self.config_file_path, 'wb') as cfgfile:
+        with open(self.config_file_path, 'w') as cfgfile:
             self.config.write(cfgfile)
 
     def prompt_for_database_settings(self, config):
         self.prompt_for_database_engine(config, self.alias)
         for setting_key in ['NAME', 'HOST', 'PORT', 'USER']:
-            config.set(self.alias_fixed, setting_key, self.cipher.encrypt(prompt('Database {}'.format(setting_key))))
+            config.set(self.alias_fixed, py3_unicode(setting_key), py3_unicode(self.cipher.encrypt(prompt('Database {}'.format(setting_key)))))
         config.set(self.alias_fixed, 'PASSWORD', self.cipher.encrypt(password_prompt()))
 
     def prompt_for_database_engine(self, config, alias):
@@ -325,10 +327,7 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
 
     def set_test_from_dict(self, test, database_alias):
         for option, value in test.items():
-            # print('option:', py3_unicode(option), ' type:', type(py3_unicode(option)))
-            print('value:', py3_unicode(self.cipher.encrypt(value)), type(py3_unicode(self.cipher.encrypt(value))))
             self.config.set(database_alias.replace('default', 'default_db'), py3_unicode(option), py3_unicode(self.cipher.encrypt(value)))
-            # self.config.set(database_alias.replace('default', 'default_db'), 'fake', 'fake')
 
 
 def prompt(message, test_value=None):
@@ -364,13 +363,6 @@ def python3_decode_utf8(text):
     except AttributeError:
         pass
     return text
-
-
-# def safe_unicode(text):
-#     if isinstance(text, unicode):
-#         return text
-#     else:
-#         return text.decode('utf-8')
 
 
 class DjangoSecretKey(EncryptedStoredSettings):
