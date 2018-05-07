@@ -19,6 +19,7 @@ import getpass
 import random
 import string
 from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 from io import open
 from .fileslib import check_or_create_dir
 from djangosecure.errors import ImproperlyConfiguredError
@@ -35,6 +36,44 @@ DATABASE_ENGINES = {
     'sqlite': 'django.db.backends.sqlite3',
     'oracle': 'django.db.backends.oracle',
 }
+
+
+def to_bytes(text):
+    if six.PY2:
+        try:
+            text = text.encode('utf-8')
+        except AttributeError:
+            pass
+    if six.PY3:
+        try:
+            text =text.encode()
+        except AttributeError:
+            pass
+    return text
+
+
+def unicode_cast(obj, *args):
+    # if six.PY2:
+    try:
+        return obj.encode('unicode_escape')
+    except AttributeError:
+        return obj
+    # if six.PY3
+
+
+def py3_unicode(txt):
+    if six.PY3:
+        try:
+            return txt.decode('unicode_escape')
+        except AttributeError:
+            pass
+    return txt
+
+
+def py3_to_bytes(txt):
+    if six.PY3:
+        return bytearray(txt, encoding='utf-8')
+    return txt
 
 
 class Cipher(object):
@@ -55,48 +94,47 @@ class Cipher(object):
 
     def gen_key(self, *args, **kwargs):
         raise NotImplementedError('Must be defined at subclass setting self.crypto_key value')
+#
+# from djangosecure.cryptolib import AESCipher
+# c = AESCipher()
+# ci = c.encrypt('hola')
+# c.decrypt(ci)
 
 
 class AESCipher(Cipher):
     block_size = 32
+    aes_mode = AES.MODE_ECB
     pad_char = '%'
 
     def __init__(self, *args):
         super(AESCipher, self).__init__(*args)
         self.unhexlified_crypto_key = self.unhexlify_crypto_key()
-        self.cipher = AES.new(self.unhexlified_crypto_key)
+
+    @property
+    def cipher(self):
+        return AES.new(self.unhexlified_crypto_key, self.aes_mode)
 
     def encrypt(self, plain_text):
-        encoded = self.encode_aes(plain_text)
-        return encoded
-
-    def encode_aes(self, plain_text):
-        if plain_text.endswith(self.pad_char):
-            warnings.warn('Detected pad char at the end of text, will be lost.')
-        encoded = base64.b64encode(self.cipher.encrypt(self.pad(plain_text)))
-        return python3_decode_utf8(encoded)
-
-    def decode_aes(self, ciphered_text):
-        try:
-            decoded = self.cipher.decrypt(base64.b64decode(ciphered_text))
-        except TypeError:
-            return None
-        return python3_decode_utf8(decoded).rstrip(self.pad_char)
+        print(type(py3_unicode(plain_text)))
+        padded = pad(to_bytes(plain_text), self.block_size)
+        b = to_bytes(padded)
+        encoded = self.cipher.encrypt(b)
+        hexlified = binascii.hexlify(encoded)
+        return hexlified
 
     def decrypt(self, ciphered_text):
+        ciphered_text = binascii.unhexlify(ciphered_text)
+        message = self.cipher.decrypt(ciphered_text)
         try:
-            decoded = self.decode_aes(ciphered_text)
-        except TypeError:
-            return None
-        return python3_decode_utf8(decoded)
-
-    def pad(self, text):
-        characters_to_append = ((self.block_size - len(text)) % self.block_size)
-        return text + characters_to_append * self.pad_char
+            message = unpad(message, self.block_size)
+        except IndexError:
+            pass
+        return unicode_cast(message)
 
     def unhexlify_crypto_key(self):
         try:
             return binascii.unhexlify(self.crypto_key)
+            # return bytes(self.crypto_key)
         except TypeError:
             warnings.warn('Crypto Key could not be unhexlified')
             return None
@@ -106,9 +144,10 @@ class AESCipher(Cipher):
         return binascii.hexlify(key)
 
 
+
 """
 from djangosecure.cryptolib import CryptoKeyFileManager
-a = CryptoKeyFileManager('/root/rm.me')
+a = CryptoKeyFileManager('./deleteme')
 """
 class CryptoKeyFileManager(object):
 
@@ -124,10 +163,11 @@ class CryptoKeyFileManager(object):
             self.key = self.create_key_file()
 
         self.cipher = self.CipherClass(self.key)
+        self.unhexlify_key = binascii.unhexlify(self.key)
 
     def read_key_file(self):
-        with open(self.path, "r") as crypto_key_file:
-            return crypto_key_file.read().strip()
+        with open(self.path, "rb") as crypto_key_file:
+            return crypto_key_file.read().strip().decode('unicode_escape')
 
     def create_key_file(self):
         check_or_create_dir(os.path.dirname(self.path))
@@ -135,9 +175,10 @@ class CryptoKeyFileManager(object):
         return self.write_key_file(self.CipherClass().crypto_key)
 
     def write_key_file(self, crypto_key):
-        with open(self.path, 'w') as key_file:
+        with open(self.path, 'wb') as key_file:
             if six.PY3:
-                key_file.write(crypto_key.decode('utf-8'))
+                print('cryptokey: ', crypto_key, 'type:', type(crypto_key))
+                key_file.write(crypto_key)
             else:
                 key_file.write(crypto_key.decode('utf-8'))
             os.chmod(self.path, stat.S_IRUSR + stat.S_IWRITE)
@@ -162,6 +203,7 @@ class EncryptedStoredSettings(object):
     def get(self, section, option, test_value=None):
         try:
             setting = self.encrypted_config.get(section, option)
+            print(setting)
             setting = self.cipher.decrypt(setting)
         except (NoSectionError, NoOptionError):
             setting = self.prompt(message="[{}] {}".format(section, option), test_value=test_value)
@@ -181,7 +223,9 @@ class EncryptedStoredSettings(object):
 
     def save_encrypted_setting(self, section, option, value):
         self.check_or_create_section(section)
-        self.encrypted_config.set(section, option, self.cipher.encrypt(value))
+
+        self.encrypted_config.set(section, py3_unicode(option), py3_unicode(self.cipher.encrypt(value)))
+        # self.encrypted_config.set(section, option, self.cipher.encrypt(value))
         self.write_encrypted_config()
 
     def check_config_file_path_has_been_set(self):
@@ -261,7 +305,7 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
     def prompt_for_database_settings(self, config):
         self.prompt_for_database_engine(config, self.alias)
         for setting_key in ['NAME', 'HOST', 'PORT', 'USER']:
-            config.set(self.alias_fixed, setting_key, self.cipher.encrypt(prompt('Database {}'.format(setting_key))))
+            config.set(self.alias_fixed, py3_unicode(setting_key), py3_unicode(self.cipher.encrypt(prompt('Database {}'.format(setting_key)))))
         config.set(self.alias_fixed, 'PASSWORD', self.cipher.encrypt(password_prompt()))
 
     def prompt_for_database_engine(self, config, alias):
@@ -282,8 +326,8 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
             }, alias)
 
     def set_test_from_dict(self, test, database_alias):
-        for k, v in test.items():
-            self.config.set(database_alias.replace('default', 'default_db'), k, self.cipher.encrypt(v))
+        for option, value in test.items():
+            self.config.set(database_alias.replace('default', 'default_db'), py3_unicode(option), py3_unicode(self.cipher.encrypt(value)))
 
 
 def prompt(message, test_value=None):
@@ -321,18 +365,11 @@ def python3_decode_utf8(text):
     return text
 
 
-# def safe_unicode(text):
-#     if isinstance(text, unicode):
-#         return text
-#     else:
-#         return text.decode('utf-8')
-
-
 class DjangoSecretKey(EncryptedStoredSettings):
     @property
     def key(self):
         try:
-            return self.cipher.decrypt(open(self.config_file_path).read().strip())
+            return self.cipher.decrypt(open(self.config_file_path, 'rb').read().strip())
         except IOError:
             return self.create_encripted_config()
 
@@ -341,8 +378,9 @@ class DjangoSecretKey(EncryptedStoredSettings):
 
     def create_encripted_config(self):
         key = self.generate_random_secret_key()
-        with open(self.config_file_path, 'w') as secret:
-            secret.write(python3_decode_utf8(self.cipher.encrypt(key)))
+        with open(self.config_file_path, 'wb') as secret:
+            print('create_encrypted_config key=', key, type(key))
+            secret.write(self.cipher.encrypt(key))
         return key
 
     @staticmethod

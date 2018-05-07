@@ -1,4 +1,5 @@
 configparser==3.5.0
 future==0.16.0
-pycrypto==2.6.1
+# pycrypto==2.6.1
 six==1.10.0
+pycryptodome==3.6.1
