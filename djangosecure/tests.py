@@ -71,7 +71,7 @@ class TestCriptolib(DjangoSecureTestCase):
         self.assertEqual('test setting value', self.hidden_settings.get('test_section', 'test_option',
                                                                         test_value='test setting value'))
         # Recover value
-        self.assertEqual(b'test setting value', self.hidden_settings.get('test_section', 'test_option'))
+        self.assertEqual('test setting value', self.hidden_settings.get('test_section', 'test_option'))
 
     def test_create_key_file(self):
         new_cryptokey = CryptoKeyFileManager(self.files['new_cryptokey'])
@@ -81,12 +81,12 @@ class TestCriptolib(DjangoSecureTestCase):
         database = self.database_settings.settings('default', test=True)
         self.assertEqual(self.database_settings.config_file_path, self.files['db_path'])
         self.assertDictEqual(database, {
-            'ENGINE': b'django.db.backends.postgresql',
-            'NAME': b'test_db_name',
-            'USER': b'test_user',
-            'PASSWORD': b'test_password',
-            'HOST': b'test_host',
-            'PORT': b'5432',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'test_db_name',
+            'USER': 'test_user',
+            'PASSWORD': 'test_password',
+            'HOST': 'test_host',
+            'PORT': '5432',
         })
 
     def test_get_secret_key(self):

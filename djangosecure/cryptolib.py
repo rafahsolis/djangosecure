@@ -55,7 +55,7 @@ def to_bytes(text):
 def unicode_cast(obj, *args):
     # if six.PY2:
     try:
-        return obj.encode('unicode_escape')
+        return obj.decode('utf-8')
     except AttributeError:
         return obj
     # if six.PY3
@@ -115,7 +115,7 @@ class AESCipher(Cipher):
         return AES.new(self.unhexlified_crypto_key, self.aes_mode)
 
     def encrypt(self, plain_text):
-        print(type(py3_unicode(plain_text)))
+        # print(type(py3_unicode(plain_text)))
         padded = pad(to_bytes(plain_text), self.block_size)
         b = to_bytes(padded)
         encoded = self.cipher.encrypt(b)
@@ -129,6 +129,7 @@ class AESCipher(Cipher):
             message = unpad(message, self.block_size)
         except IndexError:
             pass
+
         return unicode_cast(message)
 
     def unhexlify_crypto_key(self):
