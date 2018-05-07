@@ -82,6 +82,15 @@ To encrypt any other setting use EncryptedStoredSettings, for example:
         encripted_settings.get('celery', 'broker_password')
         )
 
+Runing tests
+============
+
+nosetests --with-coverage --cover-html
+======================================
+
+nosetests --with-coverage --cover-html --cover-inclusive --cover-package=djangosecure
+=====================================================================================
+
 -  Note: File and path are automatically created at first call
 
 .. |build status| image:: https://git.herrerosolis.com/rafahsolis/djangosecure/badges/master/build.svg

@@ -306,11 +306,11 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
         self.prompt_for_database_engine(config, self.alias)
         for setting_key in ['NAME', 'HOST', 'PORT', 'USER']:
             config.set(self.alias_fixed, py3_unicode(setting_key), py3_unicode(self.cipher.encrypt(prompt('Database {}'.format(setting_key)))))
-        config.set(self.alias_fixed, 'PASSWORD', self.cipher.encrypt(password_prompt()))
+        config.set(self.alias_fixed, py3_unicode('PASSWORD'), py3_unicode(self.cipher.encrypt(password_prompt())))
 
     def prompt_for_database_engine(self, config, alias):
-        config.set(alias.replace('default', 'default_db'), 'ENGINE', self.cipher.encrypt(
-            DATABASE_ENGINES[prompt('Database engine (options: postgres, mysql, sqlite, oracle)')]))
+        config.set(py3_unicode(alias.replace('default', 'default_db')), py3_unicode('ENGINE'), py3_unicode(self.cipher.encrypt(
+            DATABASE_ENGINES[prompt('Database engine (options: postgres, mysql, sqlite, oracle)')])))
 
     def set_test(self, test, alias):
         if isinstance(test, dict):
