@@ -53,12 +53,10 @@ def to_bytes(text):
 
 
 def unicode_cast(obj, *args):
-    # if six.PY2:
     try:
         return obj.decode('utf-8')
     except AttributeError:
         return obj
-    # if six.PY3
 
 
 def py3_unicode(txt):
@@ -94,11 +92,6 @@ class Cipher(object):
 
     def gen_key(self, *args, **kwargs):
         raise NotImplementedError('Must be defined at subclass setting self.crypto_key value')
-#
-# from djangosecure.cryptolib import AESCipher
-# c = AESCipher()
-# ci = c.encrypt('hola')
-# c.decrypt(ci)
 
 
 class AESCipher(Cipher):
@@ -115,7 +108,6 @@ class AESCipher(Cipher):
         return AES.new(self.unhexlified_crypto_key, self.aes_mode)
 
     def encrypt(self, plain_text):
-        # print(type(py3_unicode(plain_text)))
         padded = pad(to_bytes(plain_text), self.block_size)
         b = to_bytes(padded)
         encoded = self.cipher.encrypt(b)
@@ -135,7 +127,6 @@ class AESCipher(Cipher):
     def unhexlify_crypto_key(self):
         try:
             return binascii.unhexlify(self.crypto_key)
-            # return bytes(self.crypto_key)
         except TypeError:
             warnings.warn('Crypto Key could not be unhexlified')
             return None
@@ -145,11 +136,6 @@ class AESCipher(Cipher):
         return binascii.hexlify(key)
 
 
-
-"""
-from djangosecure.cryptolib import CryptoKeyFileManager
-a = CryptoKeyFileManager('./deleteme')
-"""
 class CryptoKeyFileManager(object):
 
     CipherClass = AESCipher
@@ -204,7 +190,6 @@ class EncryptedStoredSettings(object):
     def get(self, section, option, test_value=None):
         try:
             setting = self.encrypted_config.get(section, option)
-            print(setting)
             setting = self.cipher.decrypt(setting)
         except (NoSectionError, NoOptionError):
             setting = self.prompt(message="[{}] {}".format(section, option), test_value=test_value)
@@ -226,7 +211,6 @@ class EncryptedStoredSettings(object):
         self.check_or_create_section(section)
 
         self.encrypted_config.set(section, py3_unicode(option), py3_unicode(self.cipher.encrypt(value)))
-        # self.encrypted_config.set(section, option, self.cipher.encrypt(value))
         self.write_encrypted_config()
 
     def check_config_file_path_has_been_set(self):
@@ -276,10 +260,7 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
 
     def get_database(self):
         config = ConfigParser()
-        if self.config_file_path is None:
-            cfg_path = DEFAULT_DATABASES_CONF
-        else:
-            cfg_path = self.config_file_path
+        cfg_path = self.get_path()
         config.read(cfg_path)
 
         if self.alias_fixed in config.sections():
@@ -292,6 +273,13 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
             self.create_database_config_file()
 
             return self.get_database()
+
+    def get_path(self):
+        if self.config_file_path is None:
+            cfg_path = DEFAULT_DATABASES_CONF
+        else:
+            cfg_path = self.config_file_path
+        return cfg_path
 
     def create_database_config_file(self):
 
@@ -339,7 +327,7 @@ def prompt(message, test_value=None):
         return test_value
 
     passfields = ['S3 access IAM Secret Key', 'database password']
-    if message in passfields or 'assword' in message:
+    if message in passfields or 'assword' in message.lower() or 'secret' in message.lower():
         return password_prompt('%s: ' % message)
     else:
         return input('%s: ' % message)
