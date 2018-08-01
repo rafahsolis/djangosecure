@@ -282,7 +282,8 @@ class DjangoDatabaseSettings(EncryptedStoredSettings):
         return cfg_path
 
     def create_database_config_file(self):
-
+        if os.path.isfile(self.get_path()):
+            self.config.read(self.get_path())
         if self.test is None:
             self.prompt_for_database_settings(self.config)
         else:
