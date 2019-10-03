@@ -49,7 +49,7 @@ setup(
     tests_require=['nose', 'six'],
     install_requires=[
         'configparser==3.5.0',
-        'pycryptodome==3.6.1',
+        'pycryptodome==3.6.6',
         'Django',
         'six==1.10.0',
         'future==0.16.0',
